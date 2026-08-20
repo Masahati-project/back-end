@@ -13,7 +13,7 @@ class AuthController extends Controller
     public function registerSpaceOwnerAccount(Request $request)
     {
         $request->validate([
-            'full_name' => 'required|string',
+            'name' => 'required|string',
             'phone' => 'required|numeric|unique:users,phone',
             'email' => 'required|email|unique:users,email',
             'password' => 'required',
@@ -24,7 +24,7 @@ class AuthController extends Controller
             $path = $file->store('/picture', 'public');
 
             $user = User::create([
-                'full_name' => $request->full_name,
+                'name' => $request->full_name,
                 'phone' => $request->phone,
                 'email' => $request->email,
                 'password' => bcrypt($request->password),
@@ -46,14 +46,14 @@ class AuthController extends Controller
     public function registerCustomerAccount(Request $request)
     {
         $request->validate([
-            'full_name' => 'required|string',
+            'name' => 'required|string',
             'phone' => 'required|numeric|unique:users,phone',
             'email' => 'required|email|unique:users,email',
             'password' => 'required',
         ]);
 
         $user = User::create([
-            'full_name' => $request->full_name,
+            'name' => $request->full_name,
             'phone' => $request->phone,
             'email' => $request->email,
             'password' => bcrypt($request->password),

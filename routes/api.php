@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     Route::post('/register/space-owner', [AuthController::class, 'registerSpaceOwnerAccount']);
     Route::post('/register/customer', [AuthController::class, 'registerCustomerAccount']);
-    Route::get('/login', [AuthController::class, 'loginAccount']);
+    Route::post('/login', [AuthController::class, 'loginAccount']);
 });
 
 
