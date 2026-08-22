@@ -1,0 +1,18 @@
+$kind: http-request
+name: login
+url: ""
+method: POST
+body:
+  type: formdata
+  content:
+    - type: text
+      key: login
+      value: mohannadjarad4@gmail.com
+      description: ""
+      disabled: false
+    - type: text
+      key: password
+      value: "123456789"
+      description: ""
+      disabled: false
+order: 1420559531602215
