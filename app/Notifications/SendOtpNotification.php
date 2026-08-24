@@ -39,7 +39,7 @@ class SendOtpNotification extends Notification
         return (new MailMessage)
             ->subject('رمز تأكيد الحساب')
             ->line("رمز تأكيد الحساب هو: {$this->code}")
-            ->line('هذا المز صالح لمدة 10 دقائق فقط');
+            ->line('هذا الرمز صالح لمدة 10 دقائق فقط');
     }
 
     /**
