@@ -10,7 +10,6 @@ Route::middleware('guest:sanctum')->group(function () {
     Route::post('/login', [AuthController::class, 'loginAccount'])->middleware('throttle:5,1')->name('login');
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->name('password.forgot');
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.reset');
-    Route::post('/send-otp', [AuthController::class, 'sendOtp'])->name('otp.send');
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->name('otp.verify');
 });
 
