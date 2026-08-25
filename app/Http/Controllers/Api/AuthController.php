@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\SendOtpNotification;
+use App\Services\BrevoMailService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -43,11 +44,36 @@ class AuthController extends Controller
                 'updated_at' => now()
             ]);
         }
+        $otp = rand(100000, 999999);
+
+        DB::table('verification_codes')->updateOrInsert(
+            ['target' => $request->email],
+            [
+                'code' => $otp,
+                'expires_at' => now()->addMinutes(10),
+                'updated_at' => now()
+            ]
+        );
+
+        // استدعاء الخدمة وتمرير القالب
+        $isSent = BrevoMailService::sendHtmlMail(
+            $user->email,
+            $user->name ?? 'مستخدم',
+            'رمز التحقق الخاص بك',
+            'emails.otp',
+            ['otp' => $otp, 'userName' => $user->name ?? 'المستخدم']
+        );
+
+        if (!$isSent) {
+            return response()->json([
+                'message' => 'فشل إرسال البريد الإلكتروني',
+            ], 500);
+        }
 
         return response()->json([
             'user' => $user,
             'status' => 201,
-            'message' => 'تم تسجيل صاحب المساحة بنجاح, الرجاء الانتظار حتى يتم التحقق من قبل الأدمن'
+            'message' => 'تم تسجيل صاحب المساحة بنجاح, تفقد الايميل الخاص بك'
         ]);
     }
 
@@ -72,10 +98,36 @@ class AuthController extends Controller
             'updated_at' => now(),
         ]);
 
+        $otp = rand(100000, 999999);
+
+        DB::table('verification_codes')->updateOrInsert(
+            ['target' => $request->email],
+            [
+                'code' => $otp,
+                'expires_at' => now()->addMinutes(10),
+                'updated_at' => now()
+            ]
+        );
+
+        // استدعاء الخدمة وتمرير القالب
+        $isSent = BrevoMailService::sendHtmlMail(
+            $user->email,
+            $user->name ?? 'مستخدم',
+            'رمز التحقق الخاص بك',
+            'emails.otp',
+            ['otp' => $otp, 'userName' => $user->name ?? 'المستخدم']
+        );
+
+        if (!$isSent) {
+            return response()->json([
+                'message' => 'فشل إرسال البريد الإلكتروني',
+            ], 500);
+        }
+
         return response()->json([
             'user' => $user,
             'status' => 201,
-            'message' => 'تم تسجيلك بنجاح'
+            'message' => 'تم تسجيل المستخدم بنجاح, تفقد الايميل الخاص بك'
         ]);
     }
     public function loginAccount(Request $request)
@@ -209,77 +261,19 @@ class AuthController extends Controller
         ], 400);
     }
 
-    public function sendOtp(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-        ]);
-
-        $user = User::where('email', $request->email)->first();
-
-        if ($user) {
-            $otp = rand(100000, 999999);
-
-            DB::table('verification_codes')->updateOrInsert(
-                ['target' => $request->email],
-                [
-                    'code' => $otp,
-                    'expires_at' => now()->addMinutes(10),
-                    'updated_at' => now()
-                ]
-            );
-
-            // الإرسال المباشر عبر Brevo API
-            $response = Http::withHeaders([
-                'accept' => 'application/json',
-                'api-key' => env('BREVO_API_KEY'),
-                'content-type' => 'application/json',
-            ])->post('https://api.brevo.com/v3/smtp/email', [
-                'sender' => [
-                    'name' => env('MAIL_FROM_NAME', 'Masahati'),
-                    'email' => env('MAIL_FROM_ADDRESS', 'mohannadjarad6@gmail.com'),
-                ],
-                'to' => [
-                    [
-                        'email' => $user->email,
-                        'name' => $user->name ?? 'User',
-                    ]
-                ],
-                'subject' => 'رمز التحقق الخاص بك',
-                'htmlContent' => "<h3>مرحباً،</h3><p>رمز التحقق الخاص بك هو: <b style='font-size: 20px;'>{$otp}</b></p><p>هذا الرمز صالحة لمدة 10 دقائق.</p>",
-            ]);
-
-            if ($response->successful()) {
-                return response()->json([
-                    'message' => 'تم إرسال رمز التأكيد بنجاح',
-                ], 200);
-            }
-
-            return response()->json([
-                'message' => 'فشل إرسال البريد الإلكتروني',
-                'error' => $response->json(),
-            ], 500);
-        } else {
-            return response()->json([
-                'message' => 'هذا الايميل غير استخدم',
-            ], 404);
-        }
-    }
 
     public function verifyOtp(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
             'code' => 'required|string|size:6'
         ]);
-        $user = User::where('email', $request->email)->first();
+        $record = DB::table('verification_codes')
+            ->where('code', $request->code)
+            ->first();
+
+        $user = User::where('email', $record->email)->first();
 
         if ($user) {
-            $record = DB::table('verification_codes')
-                ->where('target', $request->email)
-                ->where('code', $request->code)
-                ->first();
-
             if (!$record || Carbon::now()->greaterThan($record->expires_at)) {
                 return response()->json([
                     'message' => 'رمز التفعيل غير صحيح أو انتهت صلاحيته.'
