@@ -271,9 +271,13 @@ class AuthController extends Controller
             ->where('code', $request->code)
             ->first();
 
-        $user = User::where('email', $record->email)->first();
+        $user = User::where('email', $record->target)->first();
 
         if ($user) {
+            $record = DB::table('verification_codes')
+                ->where('code', $request->code)
+                ->first();
+
             if (!$record || Carbon::now()->greaterThan($record->expires_at)) {
                 return response()->json([
                     'message' => 'رمز التفعيل غير صحيح أو انتهت صلاحيته.'
