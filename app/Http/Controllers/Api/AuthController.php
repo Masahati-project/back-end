@@ -11,6 +11,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 
@@ -223,20 +224,45 @@ class AuthController extends Controller
                 ['target' => $request->email],
                 [
                     'code' => $otp,
-                    'expires_at' => Carbon::now()->addMinute(10),
-                    'updated_at' => Carbon::now()
+                    'expires_at' => now()->addMinutes(10),
+                    'updated_at' => now()
                 ]
             );
 
-            $user->notify(new SendOtpNotification($otp));
+            // الإرسال المباشر عبر Brevo API
+            $response = Http::withHeaders([
+                'accept' => 'application/json',
+                'api-key' => env('BREVO_API_KEY'),
+                'content-type' => 'application/json',
+            ])->post('https://api.brevo.com/v3/smtp/email', [
+                'sender' => [
+                    'name' => env('MAIL_FROM_NAME', 'Masahati'),
+                    'email' => env('MAIL_FROM_ADDRESS', 'mohannadjarad6@gmail.com'),
+                ],
+                'to' => [
+                    [
+                        'email' => $user->email,
+                        'name' => $user->name ?? 'User',
+                    ]
+                ],
+                'subject' => 'رمز التحقق الخاص بك',
+                'htmlContent' => "<h3>مرحباً،</h3><p>رمز التحقق الخاص بك هو: <b style='font-size: 20px;'>{$otp}</b></p><p>هذا الرمز صالحة لمدة 10 دقائق.</p>",
+            ]);
+
+            if ($response->successful()) {
+                return response()->json([
+                    'message' => 'تم إرسال رمز التأكيد بنجاح',
+                ], 200);
+            }
 
             return response()->json([
-                'message' => 'تم إرسال رمز التأكيد بنجاح.'
-            ], 200);
+                'message' => 'فشل إرسال البريد الإلكتروني',
+                'error' => $response->json(),
+            ], 500);
         } else {
             return response()->json([
-                'message' => 'هذا الايميل غير مستخدم'
-            ], 400);
+                'message' => 'هذا الايميل غير استخدم',
+            ], 404);
         }
     }
 
