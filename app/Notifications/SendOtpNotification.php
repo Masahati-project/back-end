@@ -1,56 +1,28 @@
 <?php
-
 namespace App\Notifications;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use App\Notifications\Channels\BrevoChannel;
 
 class SendOtpNotification extends Notification
 {
-    use Queueable;
+    public $otp;
 
-    /**
-     * Create a new notification instance.
-     */
-
-    protected $code;
-    public function __construct($code)
+    public function __construct($otp)
     {
-        $this->code = $code;
+        $this->otp = $otp;
     }
 
-    /**
-     * Get the notification's delivery channels.
-     *
-     * @return array<int, string>
-     */
-    public function via(object $notifiable): array
+    public function via($notifiable)
     {
-        return ['mail'];
+        return [BrevoChannel::class];
     }
 
-    /**
-     * Get the mail representation of the notification.
-     */
-    public function toMail(object $notifiable): MailMessage
-    {
-        return (new MailMessage)
-            ->subject('رمز تأكيد الحساب')
-            ->line("رمز تأكيد الحساب هو: {$this->code}")
-            ->line('هذا الرمز صالح لمدة 10 دقائق فقط');
-    }
-
-    /**
-     * Get the array representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
-    public function toArray(object $notifiable): array
+    public function toBrevo($notifiable)
     {
         return [
-            //
+            'subject' => 'رمز تأكيد الحساب',
+            'html' => view('emails.verification-code', ['code' => $this->otp])->render(),
         ];
     }
 }
