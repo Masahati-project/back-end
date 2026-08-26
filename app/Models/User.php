@@ -28,7 +28,8 @@ class User extends Authenticatable
         'role',
         'proof_document_url',
         'profile_picture_url',
-        'status'
+        'status',
+        'email_verified_at'
     ];
 
     public static function deleteProofDocument($path)

@@ -1,95 +1,120 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
-
+<html dir="rtl" lang="ar">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>رمز التحقق</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 0;
-            direction: rtl;
-            text-align: right;
-        }
-
-        .container {
-            max-width: 550px;
-            margin: 40px auto;
-            background-color: #ffffff;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-        }
-
-        .header {
-            background-color: #4F46E5;
-            padding: 30px;
-            text-align: center;
-            color: #ffffff;
-        }
-
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: bold;
-        }
-
-        .content {
-            padding: 40px 30px;
-            color: #333333;
-            line-height: 1.6;
-        }
-
-        .otp-box {
-            background-color: #EEF2FF;
-            border: 2px dashed #6366F1;
-            border-radius: 10px;
-            text-align: center;
-            padding: 20px;
-            margin: 30px 0;
-        }
-
-        .otp-code {
-            font-size: 36px;
-            font-weight: 800;
-            color: #4F46E5;
-            letter-spacing: 6px;
-        }
-
-        .footer {
-            background-color: #f9fafb;
-            padding: 20px;
-            text-align: center;
-            font-size: 13px;
-            color: #6b7280;
-            border-top: 1px solid #e5e7eb;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+        background-color: #f1f2f4;
+        margin: 0;
+        padding: 0;
+    }
+    .wrapper {
+        width: 100%;
+        padding: 40px 20px;
+    }
+    .container {
+        max-width: 480px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid #e2e4e8;
+    }
+    .header {
+        background-color: #1e293b;
+        padding: 26px 20px;
+        text-align: center;
+    }
+    .header h1 {
+        color: #ffffff;
+        font-size: 22px;
+        margin: 0;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+    .body {
+        padding: 36px 32px;
+        text-align: center;
+    }
+    .greeting {
+        font-size: 20px;
+        color: #1e293b;
+        margin: 0 0 10px;
+        font-weight: 600;
+    }
+    .subtext {
+        font-size: 16px;
+        color: #64748b;
+        margin: 0 0 28px;
+        line-height: 1.7;
+    }
+    .code-box {
+        display: inline-block;
+        background-color: #f8fafc;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 16px 32px;
+        margin-bottom: 24px;
+    }
+    .code {
+        font-size: 34px;
+        font-weight: 700;
+        letter-spacing: 10px;
+        color: #1e293b;
+        direction: ltr;
+        display: inline-block;
+    }
+    .note {
+        font-size: 15px;
+        color: #94a3b8;
+        margin: 0 0 4px;
+    }
+    .warning {
+        font-size: 15px;
+        color: #b91c1c;
+        margin: 16px 0 0;
+        background-color: #fef2f2;
+        border-radius: 8px;
+        padding: 10px 16px;
+        display: inline-block;
+    }
+    .divider {
+        height: 1px;
+        background-color: #e2e4e8;
+        margin: 0;
+    }
+    .footer {
+        text-align: center;
+        padding: 20px;
+        font-size: 14px;
+        color: #94a3b8;
+    }
+</style>
 </head>
-
 <body>
+<div class="wrapper">
     <div class="container">
         <div class="header">
-            <h1>{{ config('app.name', 'Masahati') }}</h1>
+            <h1>{{ config('app.name') }}</h1>
         </div>
-        <div class="content">
-            <h2>مرحباً {{ $userName }} 👋</h2>
-            <p>لقد طلبت رمز التحقق للوصول إلى حسابك. يرجى استخدام الرمز أدناه لإتمام العملية:</p>
+        <div class="body">
+            <p class="greeting">مرحباً {{ $notifiable->name ?? '' }} 👋</p>
+            <p class="subtext">لقد طلبت رمز التحقق للوصول إلى حسابك.<br>يرجى استخدام الرمز أدناه لإتمام العملية:</p>
 
-            <div class="otp-box">
-                <div class="otp-code">{{ $otp }}</div>
+            <div class="code-box">
+                <span class="code">{{ $otp }}</span>
             </div>
 
-            <p style="font-size: 14px; color: #ef4444;">* هذا الرمز صالحة لمدة 10 دقائق فقط. لا تشارك هذا الرمز مع أي
-                شخص.</p>
+            <p class="note">هذا الرمز صالح لمدة 10 دقائق فقط</p>
+            <div class="warning">⚠️ لا تشارك هذا الرمز مع أي شخص</div>
         </div>
+        <div class="divider"></div>
         <div class="footer">
-            جميع الحقوق محفوظة © {{ date('Y') }} {{ config('app.name', 'Masahati') }}
+            &copy; {{ date('Y') }} {{ config('app.name') }} — جميع الحقوق محفوظة
         </div>
     </div>
+</div>
 </body>
-
 </html>

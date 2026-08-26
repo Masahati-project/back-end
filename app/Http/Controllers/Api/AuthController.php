@@ -4,16 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Notifications\SendOtpNotification;
 use App\Services\BrevoMailService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
 class AuthController extends Controller
@@ -30,51 +28,44 @@ class AuthController extends Controller
         if ($request->hasFile('proof_document')) {
             $file = $request->file('proof_document');
             $path = $file->store('/picture', 'public');
-
-            $user = User::create([
-                'full_name' => $request->name,
-                'phone' => $request->phone,
-                'email' => $request->email,
-                'email_verified_at' => null,
-                'password' => bcrypt($request->password),
-                'role' => 'space_owner',
+            $request->merge([
                 'proof_document_url' => $path,
-                'status' => 'pending',
-                'created_at' => now(),
-                'updated_at' => now()
             ]);
         }
+
         $otp = rand(100000, 999999);
+        $token = Str::uuid()->toString();
+        Cache::put('pending_registration_' . $token, [
+            'name' => $request->name,
+            'phone' => $request->phone,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'proof_document_url' => $request->proof_document_url,
+            'role' => 'space_owner',
+            'status' => 'pending',
+            'otp' => $otp,
+        ], now()->addMinutes(10));
 
-        DB::table('verification_codes')->updateOrInsert(
-            ['target' => $request->email],
-            [
-                'code' => $otp,
-                'expires_at' => now()->addMinutes(10),
-                'updated_at' => now()
-            ]
-        );
 
-        // استدعاء الخدمة وتمرير القالب
         $isSent = BrevoMailService::sendHtmlMail(
-            $user->email,
-            $user->name ?? 'مستخدم',
+            $request->email,
+            $request->name ?? 'مستخدم',
             'رمز التحقق الخاص بك',
             'emails.otp',
-            ['otp' => $otp, 'userName' => $user->name ?? 'المستخدم']
+            ['otp' => $otp, 'userName' => $request->name ?? 'المستخدم']
         );
 
         if (!$isSent) {
             return response()->json([
                 'message' => 'فشل إرسال البريد الإلكتروني',
             ], 500);
+        } else {
+            return response()->json([
+                'meassage' => 'تم ارسال الكود, يرجى تفقد الايميل الخاص بك',
+                'registration_token' => $token
+            ], 200);
         }
 
-        return response()->json([
-            'user' => $user,
-            'status' => 201,
-            'message' => 'تم تسجيل صاحب المساحة بنجاح, تفقد الايميل الخاص بك'
-        ]);
     }
 
     public function registerCustomerAccount(Request $request)
@@ -86,36 +77,81 @@ class AuthController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $user = User::create([
-            'full_name' => $request->name,
+        $otp = rand(100000, 999999);
+        $token = Str::uuid()->toString();
+        Cache::put('pending_registration_' . $token, [
+            'name' => $request->name,
             'phone' => $request->phone,
             'email' => $request->email,
-            'email_verified_at' => null,
-            'password' => bcrypt($request->password),
+            'password' => Hash::make($request->password),
             'role' => 'customer',
             'status' => 'active',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+            'otp' => $otp,
+        ], now()->addMinutes(10));
 
-        $otp = rand(100000, 999999);
-
-        DB::table('verification_codes')->updateOrInsert(
-            ['target' => $request->email],
-            [
-                'code' => $otp,
-                'expires_at' => now()->addMinutes(10),
-                'updated_at' => now()
-            ]
-        );
-
-        // استدعاء الخدمة وتمرير القالب
         $isSent = BrevoMailService::sendHtmlMail(
-            $user->email,
-            $user->name ?? 'مستخدم',
+            $request->email,
+            $request->name ?? 'مستخدم',
             'رمز التحقق الخاص بك',
             'emails.otp',
-            ['otp' => $otp, 'userName' => $user->name ?? 'المستخدم']
+            ['otp' => $otp, 'userName' => $request->name ?? 'المستخدم']
+        );
+
+
+        if (!$isSent) {
+            return response()->json([
+                'message' => 'فشل إرسال البريد الإلكتروني',
+            ], 500);
+        } else {
+            return response()->json([
+                'message' => 'تم ارسال الكود, يرجى تفقد الايميل الخاص بك',
+                'registration_token' => $token
+            ], 200);
+        }
+
+    }
+    public function resendOtp(Request $request)
+    {
+        $request->validate([
+            'registration_token' => 'required|string'
+        ]);
+
+        $rateLimitKey = 'resend-otp:' . $request->registration_token;
+        $dataKey = 'pending_registration_' . $request->registration_token;
+
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+            $seconds = RateLimiter::availableIn($rateLimitKey);
+            $minutes = ceil($seconds / 60);
+
+            return response()->json([
+                'message' => "لقد تجاوزت الحد المسموح. يرجى المحاولة بعد {$minutes} دقيقة",
+            ], 429);
+        }
+
+        RateLimiter::hit($rateLimitKey, 600);
+
+        $data = Cache::get($dataKey);
+        if (!$data) {
+            return response()->json([
+                'message' => 'انتهت صلاحية الجلسة، يرجى التسجيل من جديد'
+            ], 400);
+        }
+        if (!is_array($data)) {
+            return response()->json([
+                'message' => 'حدث خطأ، يرجى التسجيل من جديد'
+            ], 400);
+        }
+        $newOtp = rand(100000, 999999);
+        $data['otp'] = $newOtp;
+
+        Cache::put($dataKey, $data, now()->addMinutes(10));
+
+        $isSent = BrevoMailService::sendHtmlMail(
+            $data['email'],
+            $data['name'] ?? 'مستخدم',
+            'رمز التحقق الخاص بك',
+            'emails.otp',
+            ['otp' => $newOtp, 'userName' => $data['name'] ?? 'المستخدم']
         );
 
         if (!$isSent) {
@@ -124,12 +160,14 @@ class AuthController extends Controller
             ], 500);
         }
 
+        $remaining = RateLimiter::remaining($rateLimitKey, 5);
+
         return response()->json([
-            'user' => $user,
-            'status' => 201,
-            'message' => 'تم تسجيل المستخدم بنجاح, تفقد الايميل الخاص بك'
-        ]);
+            'message' => 'تم ارسال الكود الجديد بنجاح, يرجى تفقد الايميل الخاص بك',
+            'remaining_attempts' => $remaining,
+        ], 200);
     }
+
     public function loginAccount(Request $request)
     {
         $request->validate([
@@ -265,37 +303,58 @@ class AuthController extends Controller
     public function verifyOtp(Request $request)
     {
         $request->validate([
+            'registration_token' => 'required|string',
             'code' => 'required|string|size:6'
         ]);
-        $record = DB::table('verification_codes')
-            ->where('code', $request->code)
-            ->first();
 
-        $user = User::where('email', $record->target)->first();
+        $pendingData = Cache::get('pending_registration_' . $request->registration_token);
 
-        if ($user) {
-            $record = DB::table('verification_codes')
-                ->where('code', $request->code)
-                ->first();
-
-            if (!$record || Carbon::now()->greaterThan($record->expires_at)) {
-                return response()->json([
-                    'message' => 'رمز التفعيل غير صحيح أو انتهت صلاحيته.'
-                ], 400);
-            }
-
-            DB::table('verification_codes')->where('target', $request->email)->delete();
-
-            $user->email_verified_at = Carbon::now();
-            $user->save();
-        } else {
+        if (!$pendingData) {
             return response()->json([
-                'message' => 'هذا الحساب غير موجود'
+                'message' => 'انتهت صلاحية الجلسة، يرجى إعادة محاولة التسجيل من جديد'
             ], 400);
         }
 
+        if ($pendingData['otp'] != $request->code) {
+            return response()->json([
+                'message' => 'رمز التحقق غير صحيح'
+            ], 400);
+        }
+
+        if (isset($pendingData['proof_document_url'])) {
+            $user = User::create([
+                'full_name' => $pendingData['name'],
+                'phone' => $pendingData['phone'],
+                'email' => $pendingData['email'],
+                'email_verified_at' => now(),
+                'password' => $pendingData['password'],
+                'proof_document_url' => $pendingData['proof_document_url'],
+                'role' => $pendingData['role'],
+                'status' => $pendingData['status'],
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        } else {
+            $user = User::create([
+                'full_name' => $pendingData['name'],
+                'phone' => $pendingData['phone'],
+                'email' => $pendingData['email'],
+                'email_verified_at' => now(),
+                'password' => $pendingData['password'],
+                'role' => $pendingData['role'],
+                'status' => $pendingData['status'],
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
+
+
+        Cache::delete('pending_registration_' . $request->registration_token);
+        Cache::delete('resend-otp:' . $request->registration_token);
+
         return response()->json([
-            'message' => 'تم التأكيد بنجاح.'
+            'user' => $user,
+            'message' => 'تم انشاء الحساب بنجاح'
         ], 200);
     }
 }
