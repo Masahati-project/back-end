@@ -20,7 +20,7 @@ WORKDIR /var/www
 
 COPY . .
 
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --no-scripts
 CMD sh -c "php artisan config:clear && php artisan cache:clear"
 
 CMD sh -c "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT"
