@@ -15,15 +15,15 @@ class AuthController extends Controller
     public function registerSpaceOwnerAccount(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'required|numeric|unique:users,phone',
+            'name' => 'required|string|max:255|unique:users,full_name',
+            'phone' => 'required|regex:/^05[0-9]{8}$/|unique:users,phone',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
             'proof_document' => 'required|file'
         ]);
         if ($request->hasFile('proof_document')) {
             $file = $request->file('proof_document');
-            $path = $file->store('/picture', 'public');
+            $path = $file->store('documents', 'public');
             $request->merge([
                 'proof_document_url' => $path,
             ]);
@@ -60,7 +60,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'phone' => 'required|numeric|unique:users,phone',
+            'phone' => 'required|regex:/^05[0-9]{8}$/|unique:users,phone',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
         ]);
