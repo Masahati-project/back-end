@@ -15,10 +15,10 @@ class OtpController extends Controller
     {
         return BrevoMailService::sendHtmlMail(
             $email,
-            $name ?? 'مستخدم',
+            $name,
             'رمز التحقق الخاص بك',
             'emails.otp',
-            ['otp' => $otp, 'userName' => $name ?? 'المستخدم']
+            ['otp' => $otp, 'userName' => $name]
         );
     }
 

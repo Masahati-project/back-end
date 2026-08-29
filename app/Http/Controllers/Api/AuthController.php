@@ -42,7 +42,7 @@ class AuthController extends Controller
             'otp' => $otp,
         ], now()->addMinutes(10));
 
-        $isSent = OtpController::sendOtp($request->email, $request->name, $otp, $token);
+        $isSent = OtpController::sendOtp($request->email, $request->name, $otp);
 
         if (!$isSent) {
             return response()->json([

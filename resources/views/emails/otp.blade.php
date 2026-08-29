@@ -100,7 +100,7 @@
             <h1>{{ config('app.name') }}</h1>
         </div>
         <div class="body">
-            <p class="greeting">مرحباً {{ $notifiable->name ?? '' }} 👋</p>
+            <p class="greeting">مرحباً {{ $userName}} 👋</p>
             <p class="subtext">لقد طلبت رمز التحقق للوصول إلى حسابك.<br>يرجى استخدام الرمز أدناه لإتمام العملية:</p>
 
             <div class="code-box">
