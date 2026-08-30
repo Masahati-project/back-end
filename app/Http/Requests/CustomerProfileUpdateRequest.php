@@ -25,7 +25,7 @@ class CustomerProfileUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255', Rule::unique(User::class)->ignore($this->user()->id)],
+            'full_name' => ['required', 'string', 'max:255', Rule::unique(User::class)->ignore($this->user()->id)],
             'phone' => ['required', 'regex:/^05[0-9]{8}$/', Rule::unique(User::class)->ignore($this->user()->id)],
             'email' => ['required', 'email', 'max:255', 'lowercase', Rule::unique(User::class)->ignore($this->user()->id)],
         ];
