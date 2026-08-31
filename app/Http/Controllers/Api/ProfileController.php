@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerProfileUpdateRequest;
 use App\Http\Requests\OwnerProfileUpdateRequest;
 use App\Http\Requests\UpdateProfilePictureRequest;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
@@ -68,5 +70,35 @@ class ProfileController extends Controller
             'message' => 'تم تحديث الملف الشخصي بنجاح',
             'user' => $user->fresh(),
         ], 200);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $user = $request->user();
+        $request->validate([
+            'oldPassword' => 'required|string|min:8',
+            'newPassword' => 'required|string|min:8|confirmed'
+        ]);
+        
+        if(Hash::check($request->oldPassword, $user->password)) {
+            $status = $user->forceFill([
+                'password' => Hash::make($request->newPassword)
+            ]);
+            $user->save();
+
+            if($status) {
+                return response()->json([
+                    'message' => 'تم تغيير كلمة المرور بنجاح'
+                ], 200);
+            } else {
+                return response()->json([
+                    'message' => 'لم يتم تغيير كلمة المرور، حاول مجدداً'
+                ], 400);
+            }
+        } else {
+            return response()->json([
+                'message' => 'معلومات خاطئة، حاول مجدداً'
+            ], 400);
+        }
     }
 }
