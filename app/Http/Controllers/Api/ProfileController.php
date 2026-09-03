@@ -114,7 +114,7 @@ class ProfileController extends Controller
             }
         } else {
             return response()->json([
-                'message' => 'معلومات خاطئة، حاول مجدداً'
+                'message' => 'معلومات خاطئة، يرجى حاول مجدداً'
             ], 400);
         }
     }
