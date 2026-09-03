@@ -7,11 +7,24 @@ use App\Http\Requests\CustomerProfileUpdateRequest;
 use App\Http\Requests\OwnerProfileUpdateRequest;
 use App\Http\Requests\UpdateProfilePictureRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
+    public function profile(Request $request)
+    {
+        $user = Auth::user();
+        return response()->json([
+            'name' => $user->name,
+            'phone' => $user->phone,
+            'email' => $user->email,
+            'picture' => $user?->profile_picture_url,
+            'proof_document' => $user?->proof_document_url
+        ], 201);
+    }
+
     public function updateOwnerProfile(OwnerProfileUpdateRequest $request)
     {
         $data = $request->validated();

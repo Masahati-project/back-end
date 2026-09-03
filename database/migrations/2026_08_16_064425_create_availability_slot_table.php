@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('availability_slot', function (Blueprint $table) {
             $table->id();
             $table->foreignId('unit_id')->constrained()->cascadeOnDelete();
-            $table->dateTime('start_datetime');
-            $table->dateTime('end_datetime');
+            $table->dateTime('start_time');
+            $table->dateTime('end_time');
             $table->enum('status', ['available', 'blocked', 'booked']);
         });
     }

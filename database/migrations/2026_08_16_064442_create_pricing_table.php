@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('unit_id')->constrained()->cascadeOnDelete();
             $table->enum('price_type', ['hourly', 'daily', 'monthly']);
-            $table->decimal('amount');
+            $table->string('price');
             $table->string('currency');
         });
     }

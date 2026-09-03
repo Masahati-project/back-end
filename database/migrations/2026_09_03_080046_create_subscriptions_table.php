@@ -11,12 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('space_owner_verification', function (Blueprint $table) {
+        Schema::create('subscriptions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('proof_document_url');
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->dateTime('reviewed_at');
+            $table->foreignId('plan_id')->constrained()->cascadeOnDelete();
+            $table->date('start_date');
+            $table->date('end_date');
+            $table->enum('status', ['active', 'expired', 'cancelled'])->default('active');
+            $table->timestamps();
         });
     }
 
@@ -25,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('space_owner_verification');
+        Schema::dropIfExists('subscriptions');
     }
 };

@@ -13,15 +13,16 @@ return new class extends Migration
     {
         Schema::create('workspaces', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('owner_id')->constrained('user', 'id')->cascadeOnDelete();
             $table->string('name');
             $table->text('description');
             $table->string('address');
-            $table->decimal('latitude');
-            $table->string('longitude');
+            $table->string('city');
+            $table->decimal('latitude', 10, 7);
+            $table->decimal('longitude', 10, 7);
             $table->string('contact_phone');
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->timestamp('created_at');
+            $table->timestamps();
         });
 
         

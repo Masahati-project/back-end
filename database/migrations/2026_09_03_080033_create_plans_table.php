@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('units', function (Blueprint $table) {
+        Schema::create('plans', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
-            $table->enum('type', ['desk', 'private_room', 'full_space']);
             $table->string('name');
-            $table->string('capacity');
-            $table->enum('status', ['available', 'unavailable']);
+            $table->text('description')->nullable();
+            $table->decimal('price', 10, 2);
+            $table->enum('duration_type', ['monthly', 'yearly']);
+            $table->json('features')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
         });
     }
 
@@ -26,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('units');
+        Schema::dropIfExists('plans');
     }
 };

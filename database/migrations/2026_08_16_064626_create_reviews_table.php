@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('reviews', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('booking_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
-            $table->string('rating');
+            $table->foreignId('booking_id')->nullable()->constrained()->nullOnDelete();
+            $table->enum('rating', [1, 2, 3, 4, 5]);
             $table->text('comment');
             $table->datetime('created_at');
         });

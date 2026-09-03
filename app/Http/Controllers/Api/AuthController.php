@@ -125,13 +125,6 @@ class AuthController extends Controller
         ], 401);
     }
 
-    public function accountDetails(Request $request)
-    {
-        return response()->json([
-            'user' => $request->user()
-        ], 200);
-    }
-
     public function logoutAccount(Request $request)
     {
         $user = $request->user();
@@ -148,6 +141,7 @@ class AuthController extends Controller
         $user = $request->user();
 
         User::deleteProofDocument($user->proof_document_url);
+        User::deletePicture($user->profile_picture_url);
         $user->tokens()->delete();
         $user->delete();
 

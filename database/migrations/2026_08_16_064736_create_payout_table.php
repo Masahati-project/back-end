@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('payout', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('owner_id')->constrained('user', 'id')->cascadeOnDelete();
             $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
-            $table->decimal('amount');
-            $table->date('period_start');
-            $table->date('period_end');
-            $table->enum('status', ['pending', 'paid']);
+            $table->string('amount');
+            $table->string('currency');
+            $table->enum('status', ['pending', 'processed' , 'paid']);
+            $table->date('processed_at');
         });
     }
 

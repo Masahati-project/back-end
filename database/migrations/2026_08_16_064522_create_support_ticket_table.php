@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('booking_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('handled_by')->constrained('users', 'id')->cascadeOnDelete();
             $table->string('subject');
             $table->text('description');
             $table->enum('status', ['open', 'in_progress', 'resolved', 'refunded']);

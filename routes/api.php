@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\OtpController;
 use App\Http\Controllers\Api\PasswordController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\SpacesController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -19,11 +21,19 @@ Route::middleware('guest:sanctum')->group(function () {
 
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/user-details', [AuthController::class, 'accountDetails'])->name('user.details');
+    Route::get('/profile', [ProfileController::class, 'profile'])->name('profile');
     Route::patch('/owner/profile', [ProfileController::class, 'updateOwnerProfile'])->name('owner.profile.update');
     Route::patch('/customer/profile', [ProfileController::class, 'updateCustomerProfile'])->name('customer.profile.update');
     Route::patch('/profile/picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.picture.update');
     Route::post('/change-pass', [ProfileController::class, 'changePassword'])->name('password.change');
     Route::post('/logout', [AuthController::class, 'logoutAccount'])->name('user.logout');
     Route::delete('/delete-user', [AuthController::class, 'deleteAccount'])->name('user.delete');
+
+    Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
+    Route::get('/dashboard/upcoming-booking', [DashboardController::class, 'upcomingBooking'])->name('dashboard.upcoming.booking');
+    Route::get('/dashboard/bookings', [DashboardController::class, 'bookings'])->name('dashboard.booking');
+    Route::get('/dashboard/favorites', [DashboardController::class, 'favoriteSpaces'])->name('favorite.spaces');
+    Route::post('/dashboard/favorites/toggle', [DashboardController::class, 'toggle'])->name('favorite.toggle');
+    Route::get('/dashboard/spaces', [SpacesController::class, 'index'])->name('spaces');
+
 });
