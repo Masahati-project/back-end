@@ -53,16 +53,16 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        if ($user->profile_picture_url) {
-            Storage::disk('public')->delete($user->profile_picture_url);
+        if ($user->hasFile('profile_picture')) {
+            $user->profile_picture_url = $request->file('profile_picture')->store('profile-pictures', 'public');
+            $user->save();
         }
 
-        $user->profile_picture_url = $request->file('profile_picture')->store('profile-pictures', 'public');
-        $user->save();
+
 
         return response()->json([
             'message' => 'تم تحديث الصورة الشخصية بنجاح',
-            'profile_picture_url' => Storage::url($user->profile_picture),
+            'profile_picture_url' => $user->profile_picture_url,
             'user' => $user->fresh(),
         ], 200);
     }
@@ -92,14 +92,14 @@ class ProfileController extends Controller
             'oldPassword' => 'required|string|min:8',
             'newPassword' => 'required|string|min:8|confirmed'
         ]);
-        
-        if(Hash::check($request->oldPassword, $user->password)) {
+
+        if (Hash::check($request->oldPassword, $user->password)) {
             $status = $user->forceFill([
                 'password' => Hash::make($request->newPassword)
             ]);
             $user->save();
 
-            if($status) {
+            if ($status) {
                 return response()->json([
                     'message' => 'تم تغيير كلمة المرور بنجاح'
                 ], 200);
