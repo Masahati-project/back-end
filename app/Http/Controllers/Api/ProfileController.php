@@ -17,7 +17,7 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         return response()->json([
-            'name' => $user->name,
+            'name' => $user->full_name,
             'phone' => $user->phone,
             'email' => $user->email,
             'picture' => $user?->profile_picture_url,

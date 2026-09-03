@@ -116,7 +116,7 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'تم تسجيل دخولك بنجاح',
                 'token'   => $token,
-                'user'    => $user->full_name,
+                'name'    => $user->full_name,
             ], 200);
         }
 
