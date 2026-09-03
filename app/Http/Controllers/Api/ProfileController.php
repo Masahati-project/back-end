@@ -53,7 +53,7 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        if ($user->hasFile('profile_picture')) {
+        if ($request->hasFile('profile_picture')) {
             $user->profile_picture_url = $request->file('profile_picture')->store('profile-pictures', 'public');
             $user->save();
         }
