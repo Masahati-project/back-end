@@ -9,16 +9,16 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-     public function up()
+       public function up()
 {
-    Schema::create('spaces', function (Blueprint $table) {
+    Schema::create('courses', function (Blueprint $table) {
         $table->id();
         $table->string('title');
         $table->string('image')->nullable();
         $table->text('description')->nullable();
-        $table->decimal('rating', 3, 2)->default(0);
-        $table->string('location');
-        $table->decimal('price', 10, 2);
+        $table->date('date');
+        $table->time('time_from');
+        $table->time('time_to');
         $table->timestamps();
     });
 }
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('spaces');
+        Schema::dropIfExists('courses');
     }
 };

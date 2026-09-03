@@ -6,10 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class Favorite extends Model
 {
-    public function user()
+protected $fillable = [
+    'user_id',
+    'space_id'
+];
+
+public function user()
 {
     return $this->belongsTo(User::class);
 }
+
 public function space()
 {
     return $this->belongsTo(Space::class);

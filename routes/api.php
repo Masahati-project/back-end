@@ -1,41 +1,122 @@
+```php
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Api\StudentDashboardController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\BookingController;
+use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\SpaceController;
 
 
-Route::middleware('auth:sanctum')->group(function () {
+/*
+|--------------------------------------------------------------------------
+| Public Routes
+|--------------------------------------------------------------------------
+*/
 
-  
-
-    Route::get('/user', function (Request $request) {
-        return $request->user();
-    });
-
-    Route::post('/logout', [
-        UserController::class,
-        'logout'
-    ]);
-
-});
-
-
+// Register
 Route::post('/register', [
     UserController::class,
     'register'
 ]);
 
+// Login
 Route::post('/login', [
     UserController::class,
     'login'
 ]);
 
-    Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/student/dashboard', [StudentDashboardController::class, 'index']);
+// Spaces
+
+Route::get('/spaces', [
+    SpaceController::class,
+    'index'
+]);
+
+
+/*
+|--------------------------------------------------------------------------
+| Protected Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    // Dashboard
+    Route::get('/dashboard/stats', [
+        DashboardController::class,
+        'stats'
+    ]);
+    Route::post('/spaces', [SpaceController::class, 'store']);
+
+    Route::get('/dashboard/upcoming-courses', [
+        DashboardController::class,
+        'upcomingCourses'
+    ]);
+
+
+    // Bookings
+    Route::get('/bookings', [
+        BookingController::class,
+        'index'
+    ]);
+
+
+    // Favorites
+    Route::get('/favorites', [
+        FavoriteController::class,
+        'index'
+    ]);
+
+    Route::post('/favorites/toggle', [
+        FavoriteController::class,
+        'toggle'
+    ]);
+
+
+    // Profile
+    Route::get('/profile', [
+        ProfileController::class,
+        'show'
+    ]);
+
+    Route::put('/profile/update', [
+        ProfileController::class,
+        'update'
+    ]);
+
+    Route::post('/profile/change-password', [
+        ProfileController::class,
+        'changePassword'
+    ]);
+
+
+    // Subscription
+    Route::get('/subscription/status', [
+        SubscriptionController::class,
+        'status'
+    ]);
+
+
+    // Student Dashboard
+    Route::get('/student/dashboard', [
+        StudentDashboardController::class,
+        'index'
+    ]);
+
+
+    // Logout
+    Route::post('/logout', [
+        UserController::class,
+        'logout'
+    ]);
 });
+
 
 
 

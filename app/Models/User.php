@@ -73,5 +73,10 @@ public function studySessions()
 public function studyGoal()
 {
     return $this->hasOne(StudyGoal::class);
+
+}
+public function subscription()
+{
+    return $this->hasOne(Subscription::class);
 }
 }

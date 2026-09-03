@@ -9,22 +9,22 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up()
+       public function up()
 {
-    Schema::create('favorites', function (Blueprint $table) {
+    Schema::create('subscriptions', function (Blueprint $table) {
         $table->id();
 
         $table->foreignId('user_id')
               ->constrained()
               ->cascadeOnDelete();
 
-        $table->foreignId('space_id')
-              ->constrained()
-              ->cascadeOnDelete();
+        $table->string('plan_name');
+        $table->string('status')->default('active');
+        $table->date('start_date')->nullable();
+        $table->date('end_date')->nullable();
+        $table->string('license')->nullable();
 
         $table->timestamps();
-
-        $table->unique(['user_id', 'space_id']);
     });
 }
 
@@ -33,6 +33,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('favorites');
+        Schema::dropIfExists('subscriptions');
     }
 };

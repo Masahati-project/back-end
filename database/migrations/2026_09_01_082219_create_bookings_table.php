@@ -9,35 +9,34 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
-        Schema::create('bookings', function (Blueprint $table) {
-    $table->id();
+       public function up()
+{
+    Schema::create('bookings', function (Blueprint $table) {
+        $table->id();
 
-    $table->foreignId('user_id')
-        ->constrained()
-        ->cascadeOnDelete();
+        $table->foreignId('user_id')
+              ->constrained()
+              ->cascadeOnDelete();
 
-    $table->foreignId('space_id')
-        ->constrained()
-        ->cascadeOnDelete();
+        $table->foreignId('space_id')
+              ->nullable()
+              ->constrained()
+              ->nullOnDelete();
 
-    $table->date('booking_date');
+        $table->foreignId('course_id')
+              ->nullable()
+              ->constrained()
+              ->nullOnDelete();
 
-    $table->time('start_time');
+        $table->date('date');
+        $table->time('time_from')->nullable();
+        $table->time('time_to')->nullable();
 
-    $table->time('end_time');
+        $table->string('status')->default('pending');
 
-    $table->enum('status', [
-        'pending',
-        'confirmed',
-        'cancelled',
-        'completed'
-    ])->default('pending');
-
-    $table->timestamps();
-        });
-    }
+        $table->timestamps();
+    });
+}
 
     /**
      * Reverse the migrations.
