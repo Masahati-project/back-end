@@ -15,13 +15,17 @@ class ProfileController extends Controller
 {
     public function profile(Request $request)
     {
-        $user = Auth::user();
+        $user = $request->user();
         return response()->json([
             'name' => $user->full_name,
             'phone' => $user->phone,
             'email' => $user->email,
-            'picture' => '/storage' . $user?->profile_picture_url,
-            'proof_document' => $user?->proof_document_url
+            'picture' => $user->profile_picture_url
+                ? Storage::url($user->profile_picture_url)
+                : null,
+            'proof_document' => $user->proof_document_url
+                ? Storage::url($user->proof_document_url)
+                : null,
         ], 201);
     }
 
@@ -30,12 +34,12 @@ class ProfileController extends Controller
         $data = $request->validated();
 
         if ($request->hasFile('proof_document')) {
-            $path = $request->file('proof_document')->store('documents', 'public');
 
             if ($request->user()->proof_document_url) {
                 Storage::disk('public')->delete($request->user()->proof_document_url);
             }
 
+            $path = $request->file('proof_document')->store('documents', 'public');
             $data['proof_document_url'] = $path;
         }
 
@@ -53,12 +57,12 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        if ($request->hasFile('profile_picture')) {
-            $user->profile_picture_url = $request->file('profile_picture')->store('profile-pictures', 'public');
-            $user->save();
+        if ($user->profile_picture_url) {
+            Storage::disk('public')->delete($user->prfile_picture_url);
         }
 
-
+        $user->profile_picture_url = $request->file('profile_picture')->store('profile-pictures', 'public');
+        $user->save();
 
         return response()->json([
             'message' => 'تم تحديث الصورة الشخصية بنجاح',
