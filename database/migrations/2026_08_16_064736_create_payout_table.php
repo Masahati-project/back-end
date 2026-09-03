@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('payout', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('owner_id')->constrained('user', 'id')->cascadeOnDelete();
+            $table->foreignId('owner_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
             $table->string('amount');
             $table->string('currency');
