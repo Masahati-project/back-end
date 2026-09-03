@@ -20,7 +20,7 @@ class ProfileController extends Controller
             'name' => $user->full_name,
             'phone' => $user->phone,
             'email' => $user->email,
-            'picture' => $user?->profile_picture_url,
+            'picture' => '/storage' . $user?->profile_picture_url,
             'proof_document' => $user?->proof_document_url
         ], 201);
     }
