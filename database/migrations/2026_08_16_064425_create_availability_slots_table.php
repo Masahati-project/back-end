@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('availability_slot', function (Blueprint $table) {
+        Schema::create('availability_slots', function (Blueprint $table) {
             $table->id();
             $table->foreignId('unit_id')->constrained()->cascadeOnDelete();
             $table->dateTime('start_time');
@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('availability_slot');
+        Schema::dropIfExists('availability_slots');
     }
 };
