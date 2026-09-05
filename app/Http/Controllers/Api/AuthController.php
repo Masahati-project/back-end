@@ -19,7 +19,7 @@ class AuthController extends Controller
             'phone' => 'required|regex:/^05[0-9]{8}$/|unique:users,phone',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'proof_document' => 'required|file'
+            'proof_document' => 'nullable|file'
         ]);
         if ($request->hasFile('proof_document')) {
             $file = $request->file('proof_document');
@@ -36,7 +36,7 @@ class AuthController extends Controller
             'phone' => $request->phone,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'proof_document_url' => $request->proof_document_url,
+            'proof_document_url' => $request?->proof_document_url,
             'role' => 'space_owner',
             'status' => 'pending',
             'otp' => $otp,

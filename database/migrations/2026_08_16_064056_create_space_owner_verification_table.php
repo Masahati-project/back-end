@@ -14,9 +14,11 @@ return new class extends Migration
         Schema::create('space_owner_verification', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('workspace_id')->constrained()->onDelete('cascade');
             $table->string('proof_document_url');
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->dateTime('reviewed_at');
+            $table->timestamp('verified_at')->nullable();
+            $table->timestamps();
         });
     }
 

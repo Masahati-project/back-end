@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('phone')->nullable()->unique();
             $table->string('email')->unique();
             $table->string('email_verified_at')->nullable();
-            $table->string('password')->change();
+            $table->string('password');
             $table->enum('role', ['customer', 'space_owner', 'admin']);
             $table->string('proof_document_url')->nullable();
             $table->string('profile_picture_url')->nullable();

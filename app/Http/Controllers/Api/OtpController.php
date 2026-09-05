@@ -100,33 +100,37 @@ class OtpController extends Controller
                 'message' => 'رمز التحقق غير صحيح'
             ], 400);
         }
-
-        if (isset($pendingData['proof_document_url'])) {
-            $user = User::create([
-                'full_name' => $pendingData['name'],
-                'phone' => $pendingData['phone'],
-                'email' => $pendingData['email'],
-                'email_verified_at' => now(),
-                'password' => $pendingData['password'],
-                'proof_document_url' => $pendingData['proof_document_url'],
-                'role' => $pendingData['role'],
-                'status' => $pendingData['status'],
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-        } else {
-            $user = User::create([
-                'full_name' => $pendingData['name'],
-                'phone' => $pendingData['phone'],
-                'email' => $pendingData['email'],
-                'email_verified_at' => now(),
-                'password' => $pendingData['password'],
-                'role' => $pendingData['role'],
-                'status' => $pendingData['status'],
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+        try {
+            if (isset($pendingData['proof_document_url'])) {
+                $user = User::create([
+                    'full_name' => $pendingData['name'],
+                    'phone' => $pendingData['phone'],
+                    'email' => $pendingData['email'],
+                    'email_verified_at' => now(),
+                    'password' => $pendingData['password'],
+                    'proof_document_url' => $pendingData['proof_document_url'],
+                    'role' => $pendingData['role'],
+                    'status' => $pendingData['status'],
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            } else {
+                $user = User::create([
+                    'full_name' => $pendingData['name'],
+                    'phone' => $pendingData['phone'],
+                    'email' => $pendingData['email'],
+                    'email_verified_at' => now(),
+                    'password' => $pendingData['password'],
+                    'role' => $pendingData['role'],
+                    'status' => $pendingData['status'],
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+        } catch (\Throwable $th) {
+            return $th->getMessage();
         }
+
 
 
         Cache::delete('pending_registration_' . $request->registration_token);
