@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\OtpController;
 use App\Http\Controllers\Api\PasswordController;
 use App\Http\Controllers\Api\ProfileController;
@@ -17,6 +18,7 @@ Route::middleware('guest:sanctum')->group(function () {
     Route::post('/reset-password', [PasswordController::class, 'resetPassword'])->name('password.reset');
     Route::post('/verify-otp', [OtpController::class, 'verifyOtp'])->name('otp.verify');
     Route::post('/resend-otp', [OtpController::class, 'resendOtp'])->name('otp.resend');
+    Route::post('/auth/google', [GoogleAuthController::class, 'loginWithGoogle']);
 });
 
 
