@@ -66,7 +66,6 @@ class ProfileController extends Controller
 
         return response()->json([
             'message' => 'تم تحديث الصورة الشخصية بنجاح',
-            'profile_picture_url' => $user->profile_picture_url,
             'user' => $user->fresh(),
         ], 200);
     }
