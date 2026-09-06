@@ -15,49 +15,38 @@ class GoogleAuthController extends Controller
     {
         $request->validate([
             'id_token' => 'required|string',
-            'role' => 'nullable|string'
+            'role' => 'nullable|in:customer,space_owner',
         ]);
 
-        $client = new Client(['client_id' => config('services.google.client_id')]);
-        $payload = $client->verifyIdToken($request->id_token);
+        try {
+            $client = new \Google_Client(['client_id' => config('services.google.client_id')]);
+            $payload = $client->verifyIdToken($request->id_token);
+        } catch (\Throwable $e) {
+            $payload = false;
+        }
 
         if (!$payload) {
             return response()->json([
-                'message' => 'Google token غير صالح'
+                'message' => 'Google token غير صالح',
             ], 401);
         }
 
         $googleId = $payload['sub'];
-        $email = $payload['email'];
-        $name = $payload['name'] ?? $email;
-        $avatar =  $payload['picture'] ?? null;
+        $email    = $payload['email'];
+        $name     = $payload['name'] ?? $email;
+        $avatarUrl = $payload['picture'] ?? null;
 
-        if ($avatar) {
-            $profile_picture_url = $avatar->store('profile-pictures', 'cloudinary');
-        }
-
-        $user = User::where('googleId', $googleId)->orWhere('email', $email)->first();
+        $user = User::where('google_id', $googleId)->orWhere('email', $email)->first();
 
         if ($user) {
-            $token = $user->createToken('auth_token')->plainTextToken;
-            return response()->json([
-                'message' => 'تم تسجيل الدخول بنجاح',
-                'name' => $user->full_name,
-                'token' => $token,
-            ]);
-        }
-
-        if (!$user) {
-            $user = User::create([
-                'full_name' => $name,
-                'email' => $email,
-                'google_id' => $googleId,
-                'provider' => 'google',
-                'profile_picture_url' => $profile_picture_url,
-                'password' => Hash::make(Str::random(24)),
-                'role' => $request->role,
-                'email_verified_at' => now()
-            ]);
+            // لو كان مسجل بالإيميل العادي وأول مرة يدخل بقوقل، اربط الحساب
+            if (!$user->google_id) {
+                $user->update([
+                    'google_id' => $googleId,
+                    'provider' => 'google',
+                    'profile_picture_url' => $user->profile_picture_url ?? $avatarUrl,
+                ]);
+            }
 
             $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -66,25 +55,36 @@ class GoogleAuthController extends Controller
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->full_name,
-                    'role' => $user->role
+                    'email' => $user->email,
+                    'role' => $user->role,
                 ],
                 'token' => $token,
             ]);
-        } elseif (!$user->google_id) {
-            // مستخدم مسجل بالإيميل العادي، بس أول مرة يستخدم قوقل
-            $user->update([
-                'google_id' => $googleId,
-                'provider' => 'google',
-                'profile_picture_url' => $user->profile_picture_url ?? $profile_picture_url,
-            ]);
-
-            $token = $user->createToken('auth_token')->plainTextToken;
-
-            return response()->json([
-                'message' => 'تم تسجيل الدخول بنجاح',
-                'name' => $user->full_name,
-                'token' => $token,
-            ]);
         }
+
+        // مستخدم جديد -> لو مفيش role مبعوت (لوجن مش ساين أب) خليه student افتراضيًا
+        $user = User::create([
+            'full_name' => $name,
+            'email' => $email,
+            'google_id' => $googleId,
+            'provider' => 'google',
+            'profile_picture_url' => $avatarUrl,
+            'password' => Hash::make(Str::random(24)),
+            'role' => $request->role ?? 'customer',
+            'email_verified_at' => now(),
+        ]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'تم تسجيل الدخول بنجاح',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->full_name,
+                'email' => $user->email,
+                'role' => $user->role,
+            ],
+            'token' => $token,
+        ], 200);
     }
 }
