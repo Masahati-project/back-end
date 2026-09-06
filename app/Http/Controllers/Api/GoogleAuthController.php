@@ -14,7 +14,8 @@ class GoogleAuthController extends Controller
     public function loginWithGoogle(Request $request)
     {
         $request->validate([
-            'id_token' => 'required|string'
+            'id_token' => 'required|string',
+            'role' => 'required|string'
         ]);
 
         $client = new Client(['client_id' => config('services.google.client_id')]);
@@ -45,6 +46,7 @@ class GoogleAuthController extends Controller
                 'provider' => 'google',
                 'profile_picture_url' => $profile_picture_url,
                 'password' => Hash::make(Str::random(24)),
+                'role' => $request->role,
                 'email_verified_at' => now()
             ]);
         } elseif (!$user->google_id) {
