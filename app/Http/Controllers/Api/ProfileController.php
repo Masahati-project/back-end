@@ -58,7 +58,7 @@ class ProfileController extends Controller
         $user = $request->user();
 
         if ($user->profile_picture_url) {
-            Storage::disk('public')->delete($user->prfile_picture_url);
+            Storage::disk('public')->delete($user->profile_picture_url);
         }
 
         $user->profile_picture_url = $request->file('profile_picture')->store('profile-pictures', 'public');
@@ -66,6 +66,7 @@ class ProfileController extends Controller
 
         return response()->json([
             'message' => 'تم تحديث الصورة الشخصية بنجاح',
+            'picture' => Storage::url($user->profile_picture_url),
             'user' => $user->fresh(),
         ], 200);
     }
