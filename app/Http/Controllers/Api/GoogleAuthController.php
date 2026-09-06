@@ -15,7 +15,7 @@ class GoogleAuthController extends Controller
     {
         $request->validate([
             'id_token' => 'required|string',
-            'role' => 'required|string'
+            'role' => 'nullable|string'
         ]);
 
         $client = new Client(['client_id' => config('services.google.client_id')]);
