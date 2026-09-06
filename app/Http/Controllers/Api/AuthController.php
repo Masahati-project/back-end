@@ -23,7 +23,7 @@ class AuthController extends Controller
         ]);
         if ($request->hasFile('proof_document')) {
             $file = $request->file('proof_document');
-            $path = $file->store('documents', 'public');
+            $path = $file->store('documents', 'cloudinary');
             $request->merge([
                 'proof_document_url' => $path,
             ]);

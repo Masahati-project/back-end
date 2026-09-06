@@ -37,14 +37,14 @@ class User extends Authenticatable
 
     public static function deleteProofDocument($path)
     {
-        if ($path && Storage::disk('public')->exists($path)) {
-            return Storage::disk('public')->delete($path);
+        if ($path && Storage::disk('cloudinary')->exists($path)) {
+            return Storage::disk('cloudinary')->delete($path);
         }
     }
     public static function deletePicture($path)
     {
-        if ($path && Storage::disk('public')->exists($path)) {
-            return Storage::disk('public')->delete($path);
+        if ($path && Storage::disk('cloudinary')->exists($path)) {
+            return Storage::disk('cloudinary')->delete($path);
         }
     }
     /**

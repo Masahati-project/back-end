@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerProfileUpdateRequest;
 use App\Http\Requests\OwnerProfileUpdateRequest;
 use App\Http\Requests\UpdateProfilePictureRequest;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -36,10 +37,10 @@ class ProfileController extends Controller
         if ($request->hasFile('proof_document')) {
 
             if ($request->user()->proof_document_url) {
-                Storage::disk('public')->delete($request->user()->proof_document_url);
+                Storage::disk('cloudinary')->delete($request->user()->proof_document_url);
             }
 
-            $path = $request->file('proof_document')->store('documents', 'public');
+            $path = $request->file('proof_document')->store('documents', 'cloudinary');
             $data['proof_document_url'] = $path;
         }
 
@@ -57,11 +58,9 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        if ($user->profile_picture_url) {
-            Storage::disk('public')->delete($user->profile_picture_url);
-        }
+        User::deletePicture($user->profile_picture_url);
 
-        $user->profile_picture_url = $request->file('profile_picture')->store('profile-pictures', 'public');
+        $user->profile_picture_url = $request->file('profile_picture')->store('profile-pictures', 'cloudinary');
         $user->save();
 
         return response()->json([
