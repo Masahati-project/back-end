@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('workspace_amenity', function (Blueprint $table) {
-            $table->foreignId('workspace_id')->constrained('workspaces', 'id')->cascadeOnDelete();
-            $table->foreignId('amenity_id')->constrained('amenity', 'id')->cascadeOnDelete();
+            $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('amenity_id')->constrained()->cascadeOnDelete();
         });
     }
 

@@ -11,16 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('booking', function (Blueprint $table) {
-            $table->id('booking_id');
-            $table->foreignId('user_id')->constrained('users', 'id')->cascadeOnDelete();
-            $table->foreignId('workspace_id')->constrained('workspaces', 'id')->cascadeOnDelete();
-            $table->foreignId('unit_id')->constrained('units', 'id')->cascadeOnDelete();
+        Schema::create('bookings', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('unit_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('availability_slot_id')->constrained()->cascadeOnDelete();
             $table->dateTime('start_datetime');
             $table->dateTime('end_datetime');
             $table->enum('status', ['pending', 'confirmed', 'checked_in', 'completed', 'cancelled']);
-            $table->decimal('total_amount');
-            $table->dateTime('created_at');
+            $table->decimal('total_price', 10, 2);
+            $table->text('notes')->nullable();
+            $table->timestamps();
         });
     }
 
@@ -29,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('booking');
+        Schema::dropIfExists('bookings');
     }
 };

@@ -1,0 +1,49 @@
+$kind: http-request
+name: register/space owner
+url: "{{baseurl}}/register/customer"
+method: POST
+headers:
+  - key: Accept
+    value: application/json
+    disabled: false
+  - key: x-api-key
+    value: ""
+    disabled: true
+    description: ""
+body:
+  type: formdata
+  content:
+    - type: text
+      key: name
+      value: mohannad
+      description: ""
+      disabled: false
+    - type: text
+      key: phone
+      value: "0569991081"
+      description: ""
+      disabled: false
+    - type: text
+      key: email
+      value: mohannadjarad4@gmail.com
+      description: ""
+      disabled: false
+    - type: text
+      key: password
+      value: "123456789"
+      description: ""
+      disabled: false
+    - type: text
+      key: password_confirmation
+      value: "123456789"
+      description: ""
+      disabled: false
+    - type: file
+      key: proof_document
+      src:
+        - postman-cloud:///1f19c7cd-b4fe-44c0-a762-26258ede8f87
+      description: ""
+      disabled: true
+auth:
+  type: noauth
+order: 1787218959619

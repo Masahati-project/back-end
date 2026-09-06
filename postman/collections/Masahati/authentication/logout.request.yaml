@@ -1,0 +1,11 @@
+$kind: http-request
+name: logout
+url: "{{baseurl}}/logout"
+method: POST
+headers:
+  Accept: Application/json
+auth:
+  type: bearer
+  credentials:
+    token: Ve9ScT50r2ZiAIbfETsF8UC68WgUlQFYMWjpuQ4U0995559c
+order: 2472711449655160

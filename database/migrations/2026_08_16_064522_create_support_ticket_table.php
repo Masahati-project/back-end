@@ -12,10 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('support_ticket', function (Blueprint $table) {
-            $table->id('ticket_id');
-            $table->foreignId('user_id')->constrained('users', 'id')->cascadeOnDelete();
-            $table->foreignId('booking_id')->constrained('booking', 'id')->cascadeOnDelete();
-            $table->foreignId('handled_by')->constrained('users', 'id')->cascadeOnDelete();
+            $table->id();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('booking_id')->constrained()->cascadeOnDelete();
             $table->string('subject');
             $table->text('description');
             $table->enum('status', ['open', 'in_progress', 'resolved', 'refunded']);

@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    'default' => env('MAIL_MAILER', 'brevo'),
 
     /*
     |--------------------------------------------------------------------------
@@ -96,6 +96,11 @@ return [
             ],
             'retry_after' => 60,
         ],
+        
+        'brevo' => [
+            'transport' => 'brevo',
+        ],
+        
 
     ],
 

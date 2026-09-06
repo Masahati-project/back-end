@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('pricing', function (Blueprint $table) {
-            $table->id('pricing_id');
-            $table->foreignId('unit_id')->constrained('units', 'id')->cascadeOnDelete();
+            $table->id();
+            $table->foreignId('unit_id')->constrained()->cascadeOnDelete();
             $table->enum('price_type', ['hourly', 'daily', 'monthly']);
-            $table->decimal('amount');
+            $table->string('price');
             $table->string('currency');
         });
     }

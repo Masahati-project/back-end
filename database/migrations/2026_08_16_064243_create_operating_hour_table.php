@@ -12,11 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('operating_hour', function (Blueprint $table) {
-            $table->id('operating_hour_id');
-            $table->foreignId('workspace_id')->constrained('workspaces', 'id')->cascadeOnDelete();
+            $table->id();
+            $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
             $table->enum('day_of_week', ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
             $table->time('open_time');
             $table->time('close_time');
+            $table->boolean('is_closed');
         });
     }
 

@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('availability_slot', function (Blueprint $table) {
-            $table->id('slot_id');
-            $table->foreignId('unit_id')->constrained('units', 'id')->cascadeOnDelete();
-            $table->dateTime('start_datetime');
-            $table->dateTime('end_datetime');
+        Schema::create('availability_slots', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('unit_id')->constrained()->cascadeOnDelete();
+            $table->dateTime('start_time');
+            $table->dateTime('end_time');
             $table->enum('status', ['available', 'blocked', 'booked']);
         });
     }
@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('availability_slot');
+        Schema::dropIfExists('availability_slots');
     }
 };
