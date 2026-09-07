@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\OtpController;
 use App\Http\Controllers\Api\PasswordController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SpacesController;
+use App\Http\Controllers\ChatController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -39,3 +40,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/spaces', [SpacesController::class, 'index'])->name('spaces');
 
 });
+
+Route::post('/assistant/chat', [ChatController::class, 'sendMessage']);
