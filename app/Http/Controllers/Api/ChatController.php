@@ -15,45 +15,40 @@ class ChatController extends Controller
             'message' => 'required|string',
         ]);
 
-        $systemInstruction = <<<TEXT
-أنت المساعد الذكي المخصص لمنصة "مساحاتي" (Masahati)، وهي منصة لاكتشاف وحجز مساحات العمل المشتركة في قطاع غزة.
+        // 1. تحديد مسار الملف داخل مجلد resources
+        $filePath = resource_path('prompt/masahati_context.txt');
 
-تعليمات الإجابة:
-1. أجب دائمًا بناءً على الأسئلة الشائعة والمعلومات الواردة أدناه.
-2. قدم إجابات دقيقة ومباشرة بأسلوب مهني.
-3. إذا سئلت عن موضوع خارج نطاق المنصة، وضح بأدب أنك متخصص فقط في منصة "مساحاتي".
+        // 2. التحقق من وجود الملف
+        if (!file_exists($filePath)) {
+            return response()->json(['error' => 'الملف غير موجود في resources/prompt/masahati_context.txt'], 500);
+        }
 
---- أسئلة وأجوبة منصة مساحاتي (FAQ) ---
-- ما هي منصة مساحاتي؟ هي منصة ويب لاكتشاف وحجز مساحات العمل في غزة لتوفير الكهرباء والإنترنت، تتيح البحث والتصفح عبر خريطة تفاعلية وحجز المقاعد أو المساحات الكاملة.
-- المشكلة التي تحلها: تشتت البيانات، صعوبة العثور على إنترنت وكهرباء، الحجز اليدوي المرهق، وعدم وجود تقييمات موثوقة.
-- الفئات المستهدفة: المستقلين، الطلاب، الشركات الناشئة، وأصحاب المساحات.
-- التقنيات المستخدمة: React للواجهة الأمامية، Laravel + MySQL للعمليات الخلفية، Mapbox/Google Maps للخرائط، وبوابات دفع إلكترونية.
-- خيارات الحجز: حجز مقعد فردي أو حجز المساحة بالكامل، مع إمكانية الإلغاء ضمن الإطار الزمني المسموح به.
-- أصحاب المساحات: يلزم إثبات الملكية لتفعيل الحساب، وتوفر لهم لوحة تحكم لتحديد الأسعار (ساعي/يومي/شهري) وحظر الأوقات غير المتاحة.
-- فريق العمل: مهند جراد، عبد الرحمن العطار، أمير عياد، سوزان فرج، وبراء الحسني.
-TEXT;
+        // 3. قراءة محتوى الملف
+        $systemContext = file_get_contents($filePath);
+
+        if (empty(trim($systemContext))) {
+            return response()->json(['error' => 'ملف التعليمات فارغ تماماً'], 500);
+        }
 
         $apiKey = config('services.gemini.key');
 
+        // 4. إرسال الطلب مع التأكد من اسم النموذج الصحيح
         $response = Http::post(
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={$apiKey}",
             [
                 'system_instruction' => [
-                    'parts' => [['text' => $systemInstruction]]
+                    'parts' => [
+                        ['text' => $systemContext]
+                    ]
                 ],
-
                 'contents' => [
                     [
+                        'role' => 'user',
                         'parts' => [
                             ['text' => $request->input('message')]
                         ]
                     ]
                 ],
-
-                'generationConfig' => [
-                    'maxOutputTokens' => 250, // تحديد طول الإجابة لسرعة التوليد
-                    'temperature' => 0.2     // تقليل العشوائية لرد أسرع وأكثر دقة
-                ]
             ]
         );
 
