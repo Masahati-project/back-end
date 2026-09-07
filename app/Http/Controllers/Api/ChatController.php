@@ -15,7 +15,7 @@ class ChatController extends Controller
             'message' => 'required|string',
         ]);
 
-        $systemContext = Storage::get('masahati_context.txt');
+        $systemContext = Storage::disk('local')->get('masahati_context.txt');
 
         $apiKey = config('services.gemini.key');
 
@@ -33,7 +33,7 @@ class ChatController extends Controller
                         ]
                     ]
                 ],
-                
+
                 'generationConfig' => [
                     'maxOutputTokens' => 250, // تحديد طول الإجابة لسرعة التوليد
                     'temperature' => 0.2     // تقليل العشوائية لرد أسرع وأكثر دقة
