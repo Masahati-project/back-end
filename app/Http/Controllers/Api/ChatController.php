@@ -46,7 +46,6 @@ class ChatController extends Controller
                     ],
                     'contents' => [
                         [
-                            'role' => 'user',
                             'parts' => [
                                 ['text' => $request->input('message')]
                             ]
