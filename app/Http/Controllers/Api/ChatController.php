@@ -16,16 +16,8 @@ class ChatController extends Controller
                 'message' => 'required|string',
             ]);
 
-            // 1. تحديد المسار بدقة
-            $filePath = resource_path('prompt/masahati_context.txt');
-
-            if (!file_exists($filePath)) {
-                return response()->json([
-                    'error' => 'الملف غير موجود في المسار: ' . $filePath
-                ], 404);
-            }
-
-            $systemContext = file_get_contents($filePath);
+            
+            $systemContext = file_get_contents(resource_path('prompt/masahati_context.txt'));
 
             $apiKey = config('services.gemini.key');
 
@@ -36,7 +28,7 @@ class ChatController extends Controller
             }
 
             // 2. إرسال الطلب لـ Gemini
-            $response = Http::timeout(30)->post(
+            $response = Http::post(
                 "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={$apiKey}",
                 [
                     'system_instruction' => [
