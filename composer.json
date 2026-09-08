@@ -7,10 +7,12 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "echolabsdev/prism": "^0.100.1",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "*",
-        "laravel/tinker": "^2.10.1"
+        "laravel/tinker": "^2.10.1",
+        "openai-php/laravel": "^0.20.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

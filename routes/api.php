@@ -1,4 +1,4 @@
-```php
+
 <?php
 
 use Illuminate\Support\Facades\Route;
@@ -10,7 +10,9 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\AiAssistantController;
 use App\Http\Controllers\SpaceController;
+use App\Http\Controllers\PhoneVerificationController;
 
 
 /*
@@ -116,8 +118,27 @@ Route::middleware('auth:sanctum')->group(function () {
         'logout'
     ]);
 });
+Route::prefix('assistant')->group(function () {
+    Route::get('/', [AiAssistantController::class, 'index']);
+    Route::post('/start', [AiAssistantController::class, 'start']);
+    Route::post('/ask', [AiAssistantController::class, 'ask']);
+    Route::get('/history/{conversationId}', [AiAssistantController::class, 'history']);
+});
+/*
+|--------------------------------------------------------------------------
+| Phone Verification
+|--------------------------------------------------------------------------
+*/
 
+Route::post('/phone/send-code', [
+    PhoneVerificationController::class,
+    'sendCode'
+]);
 
+Route::post('/phone/verify-code', [
+    PhoneVerificationController::class,
+    'verifyCode'
+]);
 
 
  
