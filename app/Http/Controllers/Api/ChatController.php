@@ -24,7 +24,7 @@ class ChatController extends Controller
 - تقييمات من مستخدمين حقيقيين
 - تم تصميم المنصة بواسطة : مهند جراد ‘ أمير عياد ‘ عبد الحمن العطار ‘ سوزان فرج ‘ براءة الحسني
 
-كون مختصر ومباشر.
+رد حسب اللغة‘ كون مختصر ومباشر.
 EOT;
 
         $response = Http::withToken(config('services.groq.key'))
