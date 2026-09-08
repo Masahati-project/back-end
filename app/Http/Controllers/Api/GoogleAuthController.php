@@ -15,7 +15,7 @@ class GoogleAuthController extends Controller
     {
         $request->validate([
             'id_token' => 'required|string',
-            'role' => 'required|in:customer,space_owner',
+            'role' => 'nullable|in:customer,space_owner',
         ]);
 
         try {
