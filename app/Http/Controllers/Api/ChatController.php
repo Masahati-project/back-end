@@ -22,8 +22,9 @@ class ChatController extends Controller
 - حجز مباشر لمقعد أو مساحة كاملة
 - دفع إلكتروني آمن
 - تقييمات من مستخدمين حقيقيين
+- تم تصميم المنصة بواسطة : مهند جراد ‘ أمير عياد ‘ عبد الحمن العطار ‘ سوزان فرج ‘ براءة الحسني
 
-رد دايماً بالعربي، وكون مختصر ومباشر.
+كون مختصر ومباشر.
 EOT;
 
         $response = Http::withToken(config('services.groq.key'))
@@ -34,7 +35,7 @@ EOT;
                     ['role' => 'user', 'content' => $request->input('message')],
                 ],
             ]);
-            
+
         if ($response->failed()) {
             return response()->json([
                 'error' => 'فشل الاتصال',
