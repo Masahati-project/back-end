@@ -15,7 +15,7 @@ class GoogleAuthController extends Controller
     {
         $request->validate([
             'id_token' => 'required|string',
-            'role' => 'nullable|in:customer,space_owner',
+            'role' => 'required|in:customer,space_owner',
         ]);
 
         try {
@@ -71,6 +71,7 @@ class GoogleAuthController extends Controller
             'profile_picture_url' => $avatarUrl,
             'password' => Hash::make(Str::random(24)),
             'role' => $request->role ?? 'customer',
+            'status' => ($request->role=='customer') ? 'active' : 'pending',
             'email_verified_at' => now(),
         ]);
 
