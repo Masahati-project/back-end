@@ -16,7 +16,7 @@ class ChatController extends Controller
                 'message' => 'required|string',
             ]);
 
-            
+
             $systemContext = file_get_contents(resource_path('prompt/masahati_context.txt'));
 
             $apiKey = config('services.gemini.key');
@@ -42,7 +42,7 @@ class ChatController extends Controller
                                 ['text' => $request->input('message')]
                             ]
                         ]
-                    ],
+                    ]
                 ]
             );
 
