@@ -62,7 +62,7 @@ class OtpController extends Controller
             $data['email'],
             $data['name'] ?? 'مستخدم',
             'رمز التحقق الخاص بك',
-            'emails.otp',
+            'email.otp',
             ['otp' => $newOtp, 'userName' => $data['name'] ?? 'المستخدم']
         );
 
