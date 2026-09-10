@@ -23,7 +23,7 @@
                                 <tr>
                                     <td style="padding:12px 26px;">
                                         <img src="{{ asset('images/masahati-logo-original.png') }}" alt="مساحاتي"
-                                            width="150" style="display:block;max-width:150px;height:auto;">
+                                            width="165" style="display:block;max-width:150px;height:auto;">
                                     </td>
                                 </tr>
                             </table>
