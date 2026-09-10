@@ -47,7 +47,7 @@
                     <!-- المحتوى -->
                     <tr>
                         <td
-                            style="padding:20px 40px 40px;text-align:center;background-image:url('{{ asset('images/masahati-watermark-center.png') }}');background-repeat:no-repeat;background-position:center 10px;background-size:340px auto;">
+                            style="padding:20px 40px 40px;text-align:center;background-image:url('{{ asset('images/masahati-watermark-center.png') }}');background-repeat:no-repeat;background-position:center 10px;background-size:440px auto;">
 
                             <p style="font-size:21px;color:#1f2937;margin:0 0 10px;font-weight:700;">
                                 مرحباً {{ $name }} 👋
