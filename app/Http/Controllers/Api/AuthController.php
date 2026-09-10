@@ -19,7 +19,8 @@ class AuthController extends Controller
             'phone' => 'required|regex:/^05[0-9]{8}$/|unique:users,phone',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'proof_document' => 'nullable|file'
+            'proof_document' => 'nullable|file',
+            'method' => 'in:email,phone'
         ]);
         if ($request->hasFile('proof_document')) {
             $file = $request->file('proof_document');
@@ -42,15 +43,22 @@ class AuthController extends Controller
             'otp' => $otp,
         ], now()->addMinutes(10));
 
-        $isSent = OtpController::sendOtp($request->email, $request->name, $otp);
+        if ($request->method == 'email') {
+            $isSent = OtpController::sendOtp($request->email, $request->name, $otp);
 
-        if (!$isSent) {
+            if (!$isSent) {
+                return response()->json([
+                    'message' => 'فشل إرسال البريد الإلكتروني',
+                ], 500);
+            } else {
+                return response()->json([
+                    'meassage' => 'تم ارسال الكود, يرجى تفقد الايميل الخاص بك',
+                    'registration_token' => $token
+                ], 200);
+            }
+        } elseif ($request->method == 'phone') {
             return response()->json([
-                'message' => 'فشل إرسال البريد الإلكتروني',
-            ], 500);
-        } else {
-            return response()->json([
-                'meassage' => 'تم ارسال الكود, يرجى تفقد الايميل الخاص بك',
+                'meassage' => 'تم ارسال الكود, يرجى تفقد الرسائل الخاصة بك',
                 'registration_token' => $token
             ], 200);
         }
@@ -63,6 +71,7 @@ class AuthController extends Controller
             'phone' => 'required|regex:/^05[0-9]{8}$/|unique:users,phone',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
+            'method' => 'in:email,phone'
         ]);
 
         $otp = rand(100000, 999999);
@@ -77,15 +86,22 @@ class AuthController extends Controller
             'otp' => $otp,
         ], now()->addMinutes(10));
 
-        $isSent = OtpController::sendOtp($request->email, $request->name, $otp);
+        if ($request->method == 'email') {
+            $isSent = OtpController::sendOtp($request->email, $request->name, $otp);
 
-        if (!$isSent) {
+            if (!$isSent) {
+                return response()->json([
+                    'message' => 'فشل إرسال البريد الإلكتروني',
+                ], 500);
+            } else {
+                return response()->json([
+                    'meassage' => 'تم ارسال الكود, يرجى تفقد الايميل الخاص بك',
+                    'registration_token' => $token
+                ], 200);
+            }
+        } elseif ($request->method == 'phone') {
             return response()->json([
-                'message' => 'فشل إرسال البريد الإلكتروني',
-            ], 500);
-        } else {
-            return response()->json([
-                'message' => 'تم ارسال الكود, يرجى تفقد الايميل الخاص بك',
+                'meassage' => 'تم ارسال الكود, يرجى تفقد الرسائل الخاصة بك',
                 'registration_token' => $token
             ], 200);
         }

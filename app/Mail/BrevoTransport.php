@@ -32,7 +32,7 @@ class BrevoTransport extends AbstractTransport
             'content-type' => 'application/json',
         ])->post('https://api.brevo.com/v3/smtp/email', [
             'sender' => [
-                'name' => config('mail.from.name', env('MAIL_FROM_NAME', 'Masahati')),
+                'name' => config('mail.from.name', 'Masahati'),
                 'email' => config('mail.from.address', env('MAIL_FROM_ADDRESS', 'mohannadjarad6@gmail.com')),
             ],
             'to' => $to,

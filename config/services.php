@@ -51,4 +51,8 @@ return [
         'key' => env('GROQ_API_KEY'),
     ],
 
+    'firebase' => [
+        'credentials' => storage_path('app/firebase-credentials.json'),
+    ]
+
 ];

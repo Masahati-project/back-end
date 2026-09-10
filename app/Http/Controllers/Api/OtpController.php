@@ -16,8 +16,8 @@ class OtpController extends Controller
         return BrevoMailService::sendHtmlMail(
             $email,
             $name,
-            'رمز التحقق الخاص بك',
-            'emails.otp',
+            'رمز التحقق الخاص بك - مساحاتي',
+            'email.otp',
             ['otp' => $otp, 'userName' => $name]
         );
     }
@@ -101,12 +101,12 @@ class OtpController extends Controller
             ], 400);
         }
         try {
-            if (isset($pendingData['proof_document_url'])) {
+            if ($pendingData['role']=='space_owner') {
                 $user = User::create([
                     'full_name' => $pendingData['name'],
                     'phone' => $pendingData['phone'],
                     'email' => $pendingData['email'],
-                    'email_verified_at' => now(),
+                    'verified_at' => now(),
                     'password' => $pendingData['password'],
                     'proof_document_url' => $pendingData['proof_document_url'],
                     'role' => $pendingData['role'],
@@ -119,7 +119,7 @@ class OtpController extends Controller
                     'full_name' => $pendingData['name'],
                     'phone' => $pendingData['phone'],
                     'email' => $pendingData['email'],
-                    'email_verified_at' => now(),
+                    'verified_at' => now(),
                     'password' => $pendingData['password'],
                     'role' => $pendingData['role'],
                     'status' => $pendingData['status'],

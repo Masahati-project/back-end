@@ -3,6 +3,8 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+
+use App\Services\BrevoMailService;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,6 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
+use Override;
 
 class User extends Authenticatable
 {
@@ -46,6 +49,24 @@ class User extends Authenticatable
         if ($path && Storage::disk('cloudinary')->exists($path)) {
             return Storage::disk('cloudinary')->delete($path);
         }
+    }
+
+    #[Override]
+    public function sendPasswordResetNotification($token)
+    {
+        $url = url(config('app.frontend_url') . '/reset-password?token=' . $token . '&email=' . urlencode($this->email));
+
+        BrevoMailService::sendHtmlMail(
+            toEmail : $this->email,
+            toName : $this->full_name,
+            subject : 'إعادة تعيين كلمة المرور - مساحاتي',
+            view : 'email.reset-password',
+            data : [
+                'name' => $this->full_name,
+                'url' => $url,
+                'expire' => config('auth.password.' . config('auth.defaults.passwords') . '.expire', 60),
+            ]
+        );
     }
     /**
      * The attributes that should be hidden for serialization.

@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('full_name');
             $table->string('phone')->nullable()->unique();
             $table->string('email')->unique();
-            $table->string('email_verified_at')->nullable();
+            $table->string('verified_at')->nullable();
             $table->string('password');
             $table->enum('role', ['customer', 'space_owner', 'admin']);
             $table->string('proof_document_url')->nullable();

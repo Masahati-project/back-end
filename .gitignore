@@ -22,3 +22,10 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+# .gitignore
+storage/app/firebase-credentials.json
+// config/firebase.php
+<?php
+return [
+    'credentials' => storage_path('app/firebase-credentials.json'),
+];

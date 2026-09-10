@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\PasswordController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SpacesController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\OtpViaPhoneController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -20,6 +21,7 @@ Route::middleware('guest:sanctum')->group(function () {
     Route::post('/verify-otp', [OtpController::class, 'verifyOtp'])->name('otp.verify');
     Route::post('/resend-otp', [OtpController::class, 'resendOtp'])->name('otp.resend');
     Route::post('/auth/google', [GoogleAuthController::class, 'loginWithGoogle']);
+    Route::post('/verify-phone', [OtpViaPhoneController::class, 'verifyPhone']);
 });
 
 
