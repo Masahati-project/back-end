@@ -72,7 +72,7 @@ class GoogleAuthController extends Controller
             'password' => Hash::make(Str::random(24)),
             'role' => $request->role ?? 'customer',
             'status' => ($request->role=='customer') ? 'active' : 'pending',
-            'email_verified_at' => now(),
+            'verified_at' => now(),
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
