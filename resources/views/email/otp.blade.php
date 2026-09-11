@@ -21,7 +21,7 @@
                             <table role="presentation" align="center" cellpadding="0" cellspacing="0"
                                 style="background-color:#ffffff;border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,0.1);">
                                 <tr>
-                                    <td style="padding:12px 26px;">
+                                    <td style="padding:10px 22px;">
                                         <img src="{{ asset('images/masahati-logo-original.png') }}" alt="مساحاتي"
                                             width="165" style="display:block;max-width:150px;height:auto;">
                                     </td>
@@ -47,7 +47,7 @@
                     <!-- المحتوى -->
                     <tr>
                         <td
-                            style="padding:20px 40px 40px;text-align:center;background-image:url('{{ asset('images/masahati-watermark-center.png') }}');background-repeat:no-repeat;background-position:center 10px;background-size:380px auto;">
+                            style="padding:20px 40px 40px;text-align:center;background-image:url('{{ asset('images/masahati-watermark-center.png') }}');background-repeat:no-repeat;background-position:center 10px;background-size:340px auto;">
 
                             <p style="font-size:21px;color:#1f2937;margin:0 0 10px;font-weight:700;">
                                 مرحباً {{ $userName }} 👋
