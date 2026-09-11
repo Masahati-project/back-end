@@ -14,7 +14,7 @@
           <!-- الهيدر البرتقالي -->
           <tr>
             <td style="background-color:#E07B24;padding:36px 20px;text-align:center;">
-              <img src="{{ asset('images/masahati-logo-white.png') }}" alt="مساحاتي" width="180" style="display:block;margin:0 auto;max-width:180px;height:auto;">
+              <img src="{{ asset('images/masahati-logo-original.png') }}" alt="مساحاتي" width="180" style="display:block;margin:0 auto;max-width:180px;height:auto;">
             </td>
           </tr>
 
@@ -33,7 +33,7 @@
 
           <!-- المحتوى -->
           <tr>
-            <td style="padding:20px 40px 40px;text-align:center;background-image:url('{{ asset('images/masahati-watermark-center.png') }}');background-repeat:no-repeat;background-position:center 60px;background-size:280px auto;">
+            <td style="padding:20px 40px 40px;text-align:center;background-image:url('{{ asset('images/masahati-watermark-center.png') }}');background-repeat:no-repeat;background-position:center 10px;background-size:240px auto;">
 
               <p style="font-size:21px;color:#1f2937;margin:0 0 10px;font-weight:700;">
                 مرحباً {{ $name }} 👋
