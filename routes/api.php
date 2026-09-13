@@ -8,7 +8,6 @@ use App\Http\Controllers\Api\PasswordController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SpacesController;
 use App\Http\Controllers\Api\ChatController;
-use App\Http\Controllers\Api\OtpViaPhoneController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -19,7 +18,7 @@ Route::middleware('guest:sanctum')->group(function () {
     Route::post('/forgot-password', [PasswordController::class, 'forgotPassword'])->name('password.forgot');
     Route::post('/reset-password', [PasswordController::class, 'resetPassword'])->name('password.reset');
     Route::post('/verify-otp', [OtpController::class, 'verifyOtp'])->name('otp.verify');
-    Route::post('/resend-otp', [OtpController::class, 'resendOtp'])->name('otp.resend');
+    Route::post('/resend-otp', [OtpController::class, 'resendOtp'])->middleware('throttle:5,1')->name('otp.resend');
     Route::post('/auth/google', [GoogleAuthController::class, 'loginWithGoogle']);
 });
 

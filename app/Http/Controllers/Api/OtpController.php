@@ -28,19 +28,7 @@ class OtpController extends Controller
             'registration_token' => 'required|string'
         ]);
 
-        $rateLimitKey = 'resend-otp:' . $request->registration_token;
         $dataKey = 'pending_registration_' . $request->registration_token;
-
-        if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
-            $seconds = RateLimiter::availableIn($rateLimitKey);
-            $minutes = ceil($seconds / 60);
-
-            return response()->json([
-                'message' => "لقد تجاوزت الحد المسموح. يرجى المحاولة بعد {$minutes} دقيقة",
-            ], 429);
-        }
-
-        RateLimiter::hit($rateLimitKey, 600);
 
         $data = Cache::get($dataKey);
         if (!$data) {
@@ -72,11 +60,8 @@ class OtpController extends Controller
             ], 500);
         }
 
-        $remaining = RateLimiter::remaining($rateLimitKey, 5);
-
         return response()->json([
             'message' => 'تم ارسال الكود الجديد بنجاح, يرجى تفقد الايميل الخاص بك',
-            'remaining_attempts' => $remaining,
         ], 200);
     }
 
@@ -134,7 +119,6 @@ class OtpController extends Controller
 
 
         Cache::delete('pending_registration_' . $request->registration_token);
-        Cache::delete('resend-otp:' . $request->registration_token);
 
         return response()->json([
             'user' => $user,

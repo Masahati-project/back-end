@@ -36,9 +36,7 @@ class ProfileController extends Controller
 
         if ($request->hasFile('proof_document')) {
 
-            if ($request->user()->proof_document_url) {
-                Storage::disk('cloudinary')->delete($request->user()->proof_document_url);
-            }
+            User::deleteProofDocument($request->user()->proof_document_url);
 
             $path = $request->file('proof_document')->store('documents', 'cloudinary');
             $data['proof_document_url'] = $path;
