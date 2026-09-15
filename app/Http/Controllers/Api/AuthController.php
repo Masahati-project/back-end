@@ -99,7 +99,8 @@ class AuthController extends Controller
             'password' => 'required|string'
         ]);
 
-        if (Auth::attempt($request->login, $request->password)) {
+        $credentials = $request->only('login', 'password');
+        if (Auth::attempt($credentials)) {
             $user = User::where('email', $request->login)->first();
 
             $user->tokens()->delete();
