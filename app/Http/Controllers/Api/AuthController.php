@@ -99,7 +99,14 @@ class AuthController extends Controller
             'password' => 'required|string'
         ]);
 
-        $credentials = $request->only('login', 'password');
+        $loginValue = $request->input('login');
+        $loginField = filter_var($loginValue, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
+
+        $credentials = [
+            $loginField => $loginValue,
+            'password' => $request->input('password'),
+        ];
+        
         if (Auth::attempt($credentials)) {
             $user = User::where('email', $request->login)->first();
 
