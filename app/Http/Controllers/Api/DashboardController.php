@@ -59,10 +59,14 @@ class DashboardController extends Controller
             ->get()
             ->map(function ($booking) {
                 return [
+                    'booking_id' => $booking->id,
                     'title' => $booking->unit->workspace->name,
                     'image' => $booking->unit->workspace->images->first()?->image_url,
                     'date' => $booking->start_datetime->format('Y-m-d'),
                     'time' => $booking->start_datetime->format('H:i'),
+                    'hours',
+                    'price',
+                    'status'
                 ];
             });
 
@@ -108,7 +112,9 @@ class DashboardController extends Controller
                     'image' => $workspace->images->first()?->image_url,
                     'rating' => round($workspace->reviews_avg_rating ?? 0, 1),
                     'location' => trim($workspace->address . '، ' . $workspace->city, '، '),
-                    'price' => $workspace->units->first()?->pricing->first()?->price
+                    'price' => $workspace->units->first()?->pricing->first()?->price,
+                    'power',
+                    'wifi'
                 ];
             });
 

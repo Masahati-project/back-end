@@ -28,7 +28,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [ProfileController::class, 'profile'])->name('profile');
     Route::patch('/owner/profile', [ProfileController::class, 'updateOwnerProfile'])->name('owner.profile.update');
     Route::patch('/customer/profile', [ProfileController::class, 'updateCustomerProfile'])->name('customer.profile.update');
-    Route::post('/profile/picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.picture.update');
+    Route::patch('/profile/picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.picture.update');
+    Route::post('/uploadPicture', [ProfileController::class, 'uploadPicture']);
     Route::post('/change-pass', [ProfileController::class, 'changePassword'])->name('password.change');
     Route::post('/logout', [AuthController::class, 'logoutAccount'])->name('user.logout');
     Route::delete('/delete-user', [AuthController::class, 'deleteAccount'])->name('user.delete');

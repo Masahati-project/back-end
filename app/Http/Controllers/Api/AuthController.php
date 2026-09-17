@@ -106,9 +106,9 @@ class AuthController extends Controller
             $loginField => $loginValue,
             'password' => $request->input('password'),
         ];
-
+        
         if (Auth::attempt($credentials)) {
-            $user = User::where($loginField, $request->login)->first();
+            $user = User::where('email', $request->login)->first();
 
             $user->tokens()->delete();
 

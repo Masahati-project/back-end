@@ -21,6 +21,7 @@ class ProfileController extends Controller
             'name' => $user->full_name,
             'phone' => $user->phone,
             'email' => $user->email,
+            'role' => $user->role,
             'picture' => $user->profile_picture_url
                 ? Storage::url($user->profile_picture_url)
                 : null,
@@ -36,9 +37,7 @@ class ProfileController extends Controller
 
         if ($request->hasFile('proof_document')) {
 
-            if ($request->user()->proof_document_url) {
-                Storage::disk('cloudinary')->delete($request->user()->proof_document_url);
-            }
+            User::deleteProofDocument($request->user()->proof_document_url);
 
             $path = $request->file('proof_document')->store('documents', 'cloudinary');
             $data['proof_document_url'] = $path;
@@ -54,6 +53,33 @@ class ProfileController extends Controller
         return $this->updateProfile($request, $request->validated());
     }
 
+    public function uploadPicture(Request $request)
+    {
+        $request->validate([
+            'profile_picture' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048'
+        ]);
+
+        $user = $request->user();
+
+        $path = $request->file('profile_picture')->store('profile-pictures', 'cloudinary');
+        $status = $user->forceFill([
+            'profile_picture_url' => $path
+        ]);
+        $user->save();
+
+        if ($status) {
+            return response()->json([
+                'message' => 'تم رفع الصورة الشخصية بنجاح',
+                'profile_picture_url' => Storage::url($user->profile_picture_url),
+                'user' => $user->fresh(),
+            ], 200);
+        } else {
+            return response()->json([
+                'message' => 'لم يتم رفع الصورة الشخصية'
+            ], 400);
+        }
+    }
+
     public function updateProfilePicture(UpdateProfilePictureRequest $request)
     {
         $user = $request->user();
@@ -65,6 +91,7 @@ class ProfileController extends Controller
 
         return response()->json([
             'message' => 'تم تحديث الصورة الشخصية بنجاح',
+            'profile_picture_url' => Storage::url($user->profile_picture_url),
             'user' => $user->fresh(),
         ], 200);
     }
