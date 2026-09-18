@@ -50,7 +50,7 @@ class AuthController extends Controller
             ], 500);
         } else {
             return response()->json([
-                'meassage' => 'تم ارسال الكود, يرجى تفقد الايميل الخاص بك',
+                'message' => 'تم ارسال الكود, يرجى تفقد الايميل الخاص بك',
                 'registration_token' => $token
             ], 200);
         }
@@ -85,7 +85,7 @@ class AuthController extends Controller
             ], 500);
         } else {
             return response()->json([
-                'meassage' => 'تم ارسال الكود, يرجى تفقد الايميل الخاص بك',
+                'message' => 'تم ارسال الكود, يرجى تفقد الايميل الخاص بك',
                 'registration_token' => $token
             ], 200);
         }
@@ -108,7 +108,7 @@ class AuthController extends Controller
         ];
         
         if (Auth::attempt($credentials)) {
-            $user = User::where('email', $request->login)->first();
+            $user = User::where($loginField, $loginValue)->first();
 
             $user->tokens()->delete();
 

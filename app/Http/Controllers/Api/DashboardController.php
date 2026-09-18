@@ -51,26 +51,27 @@ class DashboardController extends Controller
 
     public function upcomingBooking(Request $request)
     {
-        $bookings = Booking::with(['unit.workspace.images'])
+        $bookings = Booking::with(['unit.workspace.images', 'unit.pricing'])
             ->where('user_id', Auth::id())
             ->where('start_datetime', '>', now())
             ->where('status', 'confirmed')
             ->orderBy('start_datetime')
             ->get()
             ->map(function ($booking) {
+                $hours = $booking->start_datetime->diffInMinutes($booking->end_datetime) / 60;
                 return [
                     'booking_id' => $booking->id,
                     'title' => $booking->unit->workspace->name,
                     'image' => $booking->unit->workspace->images->first()?->image_url,
                     'date' => $booking->start_datetime->format('Y-m-d'),
                     'time' => $booking->start_datetime->format('H:i'),
-                    'hours',
-                    'price',
-                    'status'
+                    'hours' => round($hours, 2),
+                    'price' => $booking->unit->pricing->first()?->price,
+                    'status' => $booking->status
                 ];
             });
 
-        return response()->json(['data' => $bookings], 201);
+        return response()->json(['data' => $bookings], 200);
     }
 
     public function bookings(Request $request)
@@ -106,6 +107,7 @@ class DashboardController extends Controller
             ->orderBy('created_at')->get()
             ->map(function ($favorite) {
                 $workspace = $favorite->workspace;
+                $amenityNames = $workspace->amenities->pluck('name')->toArray();
                 return [
                     'space_id' => $workspace->id,
                     'title' => $workspace->name,
@@ -113,8 +115,8 @@ class DashboardController extends Controller
                     'rating' => round($workspace->reviews_avg_rating ?? 0, 1),
                     'location' => trim($workspace->address . '، ' . $workspace->city, '، '),
                     'price' => $workspace->units->first()?->pricing->first()?->price,
-                    'power',
-                    'wifi'
+                    'power' => in_array('power', $amenityNames),
+                    'wifi' => in_array('wifi', $amenityNames)
                 ];
             });
 

@@ -35,7 +35,7 @@ class User extends Authenticatable
         'proof_document_url',
         'profile_picture_url',
         'status',
-        'email_verified_at'
+        'verified_at'
     ];
 
     public static function deleteProofDocument($path)
@@ -86,7 +86,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
+            'verified_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

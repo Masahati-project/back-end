@@ -12,6 +12,8 @@ class SpacesController extends Controller
     {
         $spaces = Workspace::where('status', 'approved')
             ->with('images')
+            ->withAvg('reviews', 'rating')
+            ->with(['units.pricing'])
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
@@ -22,6 +24,8 @@ class SpacesController extends Controller
                 'description' => $space->description,
                 'location' => trim($space->address . '، ' . $space->city, '، '),
                 'image' => $space->images->first()?->image_url,
+                'rating' => round($space->reviews_avg_rating ?? 0, 1),
+                'price' => $space->units->first()?->pricing->first()?->price,
             ];
         });
 
@@ -30,6 +34,6 @@ class SpacesController extends Controller
             'current_page' => $spaces->currentPage(),
             'last_page' => $spaces->lastPage(),
             'has_more' => $spaces->hasMorePages(),
-        ]);
+        ], 200);
     }
 }
