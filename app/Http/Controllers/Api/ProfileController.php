@@ -57,6 +57,8 @@ class ProfileController extends Controller
     {
         $request->validate([
             'profile_picture' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048'
+                // Additional security: validate MIME type and extension match
+                // File content validation should be done at storage level
         ]);
 
         $user = $request->user();
@@ -119,18 +121,31 @@ class ProfileController extends Controller
         $user = $request->user();
         $request->validate([
             'oldPassword' => 'required|string|min:8',
-            'newPassword' => 'required|string|min:8|confirmed'
+            'newPassword' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/'
+            ]
         ]);
 
         if (Hash::check($request->oldPassword, $user->password)) {
+            // Invalidate all existing tokens for security
+            $user->tokens()->delete();
+
             $status = $user->forceFill([
                 'password' => Hash::make($request->newPassword)
             ]);
             $user->save();
 
+            // Generate new token after password change
+            $newToken = $user->createToken('auth_token')->plainTextToken;
+
             if ($status) {
                 return response()->json([
-                    'message' => 'تم تغيير كلمة المرور بنجاح'
+                    'message' => 'تم تغيير كلمة المرور بنجاح',
+                    'token' => $newToken
                 ], 200);
             } else {
                 return response()->json([
@@ -139,7 +154,7 @@ class ProfileController extends Controller
             }
         } else {
             return response()->json([
-                'message' => 'معلومات خاطئة، يرجى حاول مجدداً'
+                'message' => 'كلمة المرور الحالية غير صحيحة'
             ], 400);
         }
     }

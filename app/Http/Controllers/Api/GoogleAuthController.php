@@ -62,7 +62,10 @@ class GoogleAuthController extends Controller
             ]);
         }
 
-        // مستخدم جديد -> لو مفيش role مبعوت (لوجن مش ساين أب) خليه student افتراضيًا
+        // مستخدم جديد -> الطالب active فوراً، صاحب المساحة pending
+        $role = $request->role ?? 'customer';
+        $status = $role === 'customer' ? 'active' : 'pending';
+
         $user = User::create([
             'full_name' => $name,
             'email' => $email,
@@ -70,8 +73,8 @@ class GoogleAuthController extends Controller
             'provider' => 'google',
             'profile_picture_url' => $avatarUrl,
             'password' => Hash::make(Str::random(24)),
-            'role' => $request->role ?? 'customer',
-            'status' => ($request->role=='customer') ? 'active' : 'pending',
+            'role' => $role,
+            'status' => $status,
             'verified_at' => now(),
         ]);
 

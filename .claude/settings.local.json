@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /c/dev/masahati log --all --regexp-ignore-case -S'special request' --oneline --decorate)",
+      "Bash(xargs ls -la)",
+      "Bash(grep -v '^vendor$')"
+    ]
+  }
+}

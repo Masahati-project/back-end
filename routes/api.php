@@ -13,14 +13,27 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::middleware('guest:sanctum')->group(function () {
-    Route::post('/register/space-owner', [AuthController::class, 'registerSpaceOwnerAccount'])->name('register.space-owner');
-    Route::post('/register/customer', [AuthController::class, 'registerCustomerAccount'])->name('register.customer');
+    Route::post('/register/space-owner', [AuthController::class, 'registerSpaceOwnerAccount'])
+        ->middleware('throttle:5,1')
+        ->name('register.space-owner');
+    Route::post('/register/customer', [AuthController::class, 'registerCustomerAccount'])
+        ->middleware('throttle:5,1')
+        ->name('register.customer');
     Route::post('/login', [AuthController::class, 'loginAccount'])->middleware('throttle:5,1')->name('login');
-    Route::post('/forgot-password', [PasswordController::class, 'forgotPassword'])->name('password.forgot');
-    Route::post('/reset-password', [PasswordController::class, 'resetPassword'])->name('password.reset');
-    Route::post('/verify-otp', [OtpController::class, 'verifyOtp'])->name('otp.verify');
-    Route::post('/resend-otp', [OtpController::class, 'resendOtp'])->name('otp.resend');
-    Route::post('/auth/google', [GoogleAuthController::class, 'loginWithGoogle']);
+    Route::post('/forgot-password', [PasswordController::class, 'forgotPassword'])
+        ->middleware('throttle:5,1')
+        ->name('password.forgot');
+    Route::post('/reset-password', [PasswordController::class, 'resetPassword'])
+        ->middleware('throttle:5,1')
+        ->name('password.reset');
+    Route::post('/verify-otp', [OtpController::class, 'verifyOtp'])
+        ->middleware('throttle:5,1')
+        ->name('otp.verify');
+    Route::post('/resend-otp', [OtpController::class, 'resendOtp'])
+        ->middleware('throttle:3,1')
+        ->name('otp.resend');
+    Route::post('/auth/google', [GoogleAuthController::class, 'loginWithGoogle'])
+        ->middleware('throttle:5,1');
 });
 
 
@@ -43,4 +56,5 @@ Route::middleware('auth:sanctum')->group(function () {
 
 });
 
-Route::post('/assistant/chat', [ChatController::class, 'sendMessage']);
+Route::post('/assistant/chat', [ChatController::class, 'sendMessage'])
+        ->middleware('throttle:10,1');

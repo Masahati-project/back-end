@@ -41,8 +41,8 @@ class OtpController extends Controller
                 'message' => 'حدث خطأ، يرجى التسجيل من جديد'
             ], 400);
         }
-        $newOtp = rand(100000, 999999);
-        $data['otp'] = $newOtp;
+        $newOtp = random_int(100000, 999999);
+        $data['otp'] = hash('sha256', (string)$newOtp);
 
         Cache::put($dataKey, $data, now()->addMinutes(10));
 
@@ -80,7 +80,7 @@ class OtpController extends Controller
             ], 400);
         }
 
-        if ($pendingData['otp'] != $request->code) {
+        if (!hash_equals($pendingData['otp'], hash('sha256', $request->code))) {
             return response()->json([
                 'message' => 'رمز التحقق غير صحيح'
             ], 400);
@@ -113,7 +113,13 @@ class OtpController extends Controller
                 ]);
             }
         } catch (\Throwable $th) {
-            return $th->getMessage();
+            \Log::error('User creation failed during OTP verification', [
+                'error' => $th->getMessage(),
+                'trace' => $th->getTraceAsString()
+            ]);
+            return response()->json([
+                'message' => 'حدث خطأ أثناء إنشاء الحساب، يرجى المحاولة مرة أخرى'
+            ], 500);
         }
 
 

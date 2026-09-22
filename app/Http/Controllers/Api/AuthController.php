@@ -18,7 +18,13 @@ class AuthController extends Controller
             'name' => 'required|string|max:255|unique:users,full_name',
             'phone' => 'required|regex:/^05[0-9]{8}$/|unique:users,phone',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/'
+            ],
             'proof_document' => 'nullable|file',
         ]);
         if ($request->hasFile('proof_document')) {
@@ -29,7 +35,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $otp = rand(100000, 999999);
+        $otp = random_int(100000, 999999);
         $token = Str::uuid()->toString();
         Cache::put('pending_registration_' . $token, [
             'name' => $request->name,
@@ -39,10 +45,10 @@ class AuthController extends Controller
             'proof_document_url' => $request?->proof_document_url,
             'role' => 'space_owner',
             'status' => 'pending',
-            'otp' => $otp,
+            'otp' => hash('sha256', (string)$otp),
         ], now()->addMinutes(10));
 
-        $isSent = OtpController::sendOtp($request->email, $request->name, $otp);
+        $isSent = OtpController::sendOtp($request->email, $request->name, (string)$otp);
 
         if (!$isSent) {
             return response()->json([
@@ -62,10 +68,16 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'phone' => 'required|regex:/^05[0-9]{8}$/|unique:users,phone',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/'
+            ],
         ]);
 
-        $otp = rand(100000, 999999);
+        $otp = random_int(100000, 999999);
         $token = Str::uuid()->toString();
         Cache::put('pending_registration_' . $token, [
             'name' => $request->name,
@@ -74,10 +86,10 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'role' => 'customer',
             'status' => 'active',
-            'otp' => $otp,
+            'otp' => hash('sha256', (string)$otp),
         ], now()->addMinutes(10));
 
-        $isSent = OtpController::sendOtp($request->email, $request->name, $otp);
+        $isSent = OtpController::sendOtp($request->email, $request->name, (string)$otp);
 
         if (!$isSent) {
             return response()->json([
@@ -121,7 +133,7 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'message' => 'معلومات خاطئة، حاول مجدداً'
+            'message' => 'بيانات الدخول غير صحيحة'
         ], 401);
     }
 

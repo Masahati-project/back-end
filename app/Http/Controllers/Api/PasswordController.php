@@ -33,7 +33,13 @@ class PasswordController extends Controller
         $request->validate([
             'token' => 'required|string',
             'email' => 'required|email|exists:users,email',
-            'password' => 'required|string|min:8|confirmed'
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/'
+            ]
         ]);
 
         $status = Password::reset(
