@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SpacesController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\OtpViaPhoneController;
+use App\Http\Controllers\Api\SpecialRequestController;
+use App\Http\Controllers\Api\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -53,6 +55,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/favorites', [DashboardController::class, 'favoriteSpaces'])->name('favorite.spaces');
     Route::post('/dashboard/favorites/toggle', [DashboardController::class, 'toggle'])->name('favorite.toggle');
     Route::get('/dashboard/spaces', [SpacesController::class, 'index'])->name('spaces');
+
+    // Special Requests Routes
+    Route::get('/special-requests', [SpecialRequestController::class, 'index'])->name('special-requests.index');
+    Route::post('/special-requests', [SpecialRequestController::class, 'store'])->name('special-requests.store');
+    Route::get('/special-requests/{requestId}', [SpecialRequestController::class, 'show'])->name('special-requests.show');
+    Route::post('/special-requests/{requestId}/offers/{offerId}/accept', [SpecialRequestController::class, 'acceptOffer'])->name('special-requests.accept-offer');
+    Route::post('/special-requests/{requestId}/offers/{offerId}/reject', [SpecialRequestController::class, 'rejectOffer'])->name('special-requests.reject-offer');
+    Route::post('/special-requests/{requestId}/close', [SpecialRequestController::class, 'closeRequest'])->name('special-requests.close');
+
+    // Notifications Routes
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
 
 });
 

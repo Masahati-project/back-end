@@ -37,4 +37,9 @@ class SpecialRequest extends Model
     {
         return $this->belongsTo(Workspace::class);
     }
+
+    public function offers()
+    {
+        return $this->hasMany(Offer::class);
+    }
 }

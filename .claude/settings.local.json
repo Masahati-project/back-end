@@ -3,7 +3,12 @@
     "allow": [
       "Bash(git -C /c/dev/masahati log --all --regexp-ignore-case -S'special request' --oneline --decorate)",
       "Bash(xargs ls -la)",
-      "Bash(grep -v '^vendor$')"
+      "Bash(grep -v '^vendor$')",
+      "Bash(xargs grep -l \"acceptOffer\\\\|rejectOffer\")",
+      "Bash(xargs grep -l \"Offer\")",
+      "Bash(grep -r 'protected $fillable\\\\|protected $casts\\\\|has.*Through\\\\|belongsTo\\\\|hasMany\\\\|hasOne' app/Models/)",
+      "Bash(cat)",
+      "Bash(bash /tmp/check_project.sh)"
     ]
   }
 }

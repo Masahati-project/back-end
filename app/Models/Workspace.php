@@ -56,4 +56,9 @@ class Workspace extends Model
     {
         return $this->hasOne(SpaceOwnerVerification::class);
     }
+
+    public function offers(): HasMany
+    {
+        return $this->hasMany(Offer::class);
+    }
 }

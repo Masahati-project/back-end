@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\OfferAccepted;
+use App\Events\OfferRejected;
+use App\Events\SpecialRequestCreated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSpecialRequestRequest;
 use App\Models\SpecialRequest;
@@ -28,6 +31,8 @@ class SpecialRequestController extends Controller
             $request->validated(),
             ['user_id' => $request->user()->id, 'status' => 'open']
         ));
+
+        SpecialRequestCreated::dispatch($specialRequest);
 
         return response()->json([
             'request' => $specialRequest,
@@ -56,6 +61,8 @@ class SpecialRequestController extends Controller
 
         $specialRequest->update(['status' => 'accepted']);
 
+        OfferAccepted::dispatch($specialRequest);
+
         return response()->json([
             'request' => $specialRequest->fresh(),
             'message' => 'تم قبول العرض بنجاح',
@@ -69,6 +76,8 @@ class SpecialRequestController extends Controller
             ->firstOrFail();
 
         $specialRequest->update(['status' => 'rejected']);
+
+        OfferRejected::dispatch($specialRequest);
 
         return response()->json([
             'request' => $specialRequest->fresh(),
