@@ -25,10 +25,10 @@ class SecurityHeaders
         // Enable XSS filter in browsers
         $response->headers->set('X-XSS-Protection', '1; mode=block');
 
-        // Content Security Policy - customize based on your needs
+        // Content Security Policy - stricter security
         $response->headers->set(
             'Content-Security-Policy',
-            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;"
+            "default-src 'self'; script-src 'self' https:; style-src 'self' https: 'unsafe-inline'; img-src 'self' data: https: https://res.cloudinary.com; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
         );
 
         // Referrer Policy
