@@ -31,10 +31,10 @@ class OwnerSpaceController extends Controller
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'required|string',
+            'description' => 'nullable|string',
             'location' => 'required|string',
-            'lat' => 'nullable|numeric',
-            'lng' => 'nullable|numeric',
+            'lat' => 'required|numeric',
+            'lng' => 'required|numeric',
             'price_per_hour' => 'required|numeric',
             'capacity' => 'required|integer',
             'amenities' => 'required|array',
@@ -42,7 +42,9 @@ class OwnerSpaceController extends Controller
             'power' => 'required|boolean',
             'image' => 'nullable|string',
             'docs' => 'nullable|array',
-            'status' => 'required|in:pending',
+            'open_time' => 'required',
+            'close_time' => 'required',
+            'contact_phone' => 'required'
         ]);
 
         $space = Workspace::create([
@@ -53,6 +55,9 @@ class OwnerSpaceController extends Controller
             'latitude' => $validated['lat'],
             'longitude' => $validated['lng'],
             'status' => 'pending',
+            'opne_time' => $validated['open_time'],
+            'close_time' => $validated['close_time'],
+            'is_closed' => false
         ]);
 
         // Store image in workspace_images table
