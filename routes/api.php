@@ -1,16 +1,21 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\CustomerDashboardController;
 use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\OtpController;
 use App\Http\Controllers\Api\PasswordController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SpacesController;
 use App\Http\Controllers\Api\ChatController;
-use App\Http\Controllers\Api\OtpViaPhoneController;
 use App\Http\Controllers\Api\SpecialRequestController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\OwnerSpaceController;
+use App\Http\Controllers\Api\OwnerBookingController;
+use App\Http\Controllers\Api\OwnerOfferController;
+use App\Http\Controllers\Api\OwnerReviewController;
+use App\Http\Controllers\Api\OwnerDocumentController;
+use App\Http\Controllers\Api\OwnerAdController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -49,11 +54,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logoutAccount'])->name('user.logout');
     Route::delete('/delete-user', [AuthController::class, 'deleteAccount'])->name('user.delete');
 
-    Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
-    Route::get('/dashboard/upcoming-booking', [DashboardController::class, 'upcomingBooking'])->name('dashboard.upcoming.booking');
-    Route::get('/dashboard/bookings', [DashboardController::class, 'bookings'])->name('dashboard.booking');
-    Route::get('/dashboard/favorites', [DashboardController::class, 'favoriteSpaces'])->name('favorite.spaces');
-    Route::post('/dashboard/favorites/toggle', [DashboardController::class, 'toggle'])->name('favorite.toggle');
+    Route::get('/dashboard/stats', [CustomerDashboardController::class, 'stats'])->name('dashboard.stats');
+    Route::get('/dashboard/upcoming-booking', [CustomerDashboardController::class, 'upcomingBooking'])->name('dashboard.upcoming.booking');
+    Route::get('/dashboard/bookings', [CustomerDashboardController::class, 'bookings'])->name('dashboard.booking');
+    Route::get('/dashboard/favorites', [CustomerDashboardController::class, 'favoriteSpaces'])->name('favorite.spaces');
+    Route::post('/dashboard/favorites/toggle', [CustomerDashboardController::class, 'toggle'])->name('favorite.toggle');
     Route::get('/dashboard/spaces', [SpacesController::class, 'index'])->name('spaces');
 
     // Special Requests Routes
@@ -67,6 +72,37 @@ Route::middleware('auth:sanctum')->group(function () {
     // Notifications Routes
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
+
+    // Owner Routes (Space Owner Dashboard)
+    Route::middleware('auth:sanctum')->prefix('owner')->group(function () {
+        // Spaces
+        Route::get('/spaces', [OwnerSpaceController::class, 'index'])->name('owner.spaces.index');
+        Route::post('/spaces', [OwnerSpaceController::class, 'store'])->name('owner.spaces.store');
+        Route::put('/spaces/{space}', [OwnerSpaceController::class, 'update'])->name('owner.spaces.update');
+        Route::patch('/spaces/{space}/active', [OwnerSpaceController::class, 'toggleActive'])->name('owner.spaces.toggle-active');
+        Route::delete('/spaces/{space}', [OwnerSpaceController::class, 'destroy'])->name('owner.spaces.destroy');
+
+        // Bookings
+        Route::get('/bookings', [OwnerBookingController::class, 'index'])->name('owner.bookings.index');
+        Route::patch('/bookings/{booking}/status', [OwnerBookingController::class, 'updateStatus'])->name('owner.bookings.update-status');
+
+        // Offers
+        Route::get('/offers', [OwnerOfferController::class, 'index'])->name('owner.offers.index');
+
+        // Reviews
+        Route::get('/reviews', [OwnerReviewController::class, 'index'])->name('owner.reviews.index');
+
+        // Documents
+        Route::get('/documents', [OwnerDocumentController::class, 'index'])->name('owner.documents.index');
+        Route::post('/documents', [OwnerDocumentController::class, 'store'])->name('owner.documents.store');
+
+        // Ads
+        Route::get('/ads', [OwnerAdController::class, 'index'])->name('owner.ads.index');
+        Route::post('/ads', [OwnerAdController::class, 'store'])->name('owner.ads.store');
+        Route::put('/ads/{ad}', [OwnerAdController::class, 'update'])->name('owner.ads.update');
+        Route::delete('/ads/{ad}', [OwnerAdController::class, 'destroy'])->name('owner.ads.destroy');
+        Route::post('/ads/{ad}/publish', [OwnerAdController::class, 'publish'])->name('owner.ads.publish');
+    });
 
 });
 

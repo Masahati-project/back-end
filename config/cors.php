@@ -18,15 +18,21 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => [
+        'https://masahati-five.vercel.app',
+        'https://front-end-kwba.onrender.com',
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://localhost:8080',
+    ],
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => ['Authorization', 'Content-Type', 'Accept', 'X-Requested-With'],
 
     'exposed_headers' => [],
 
-    'max_age' => 0,
+    'max_age' => 86400,
 
     'supports_credentials' => true,
 

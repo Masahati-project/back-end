@@ -15,8 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
             $table->enum('type', ['desk', 'private_room', 'full_space']);
-            $table->string('name');
             $table->string('capacity');
+            $table->boolean('has_wifi');
+            $table->boolean('has_power');
             $table->enum('status', ['available', 'unavailable']);
         });
     }

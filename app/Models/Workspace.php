@@ -21,11 +21,6 @@ class Workspace extends Model
         return $this->hasMany(WorkspaceImage::class);
     }
 
-    public function operatingHours(): HasMany
-    {
-        return $this->hasMany(OperatingHour::class);
-    }
-
     public function units(): HasMany
     {
         return $this->hasMany(Unit::class);
@@ -60,5 +55,43 @@ class Workspace extends Model
     public function offers(): HasMany
     {
         return $this->hasMany(Offer::class);
+    }
+
+    public function ads(): HasMany
+    {
+        return $this->hasMany(Ad::class, 'space_id');
+    }
+
+    public function isOwnedBy(User $user): bool
+    {
+        return $this->owner_id === $user->id;
+    }
+
+    public function getStats()
+    {
+        $confirmedBookings = $this->bookings()
+            ->where('status', 'confirmed')
+            ->whereMonth('created_at', now()->month)
+            ->count();
+
+        $revenue = $this->bookings()
+            ->where('status', 'confirmed')
+            ->whereMonth('created_at', now()->month)
+            ->sum('price');
+
+        $totalBookings = $this->bookings()
+            ->where('status', 'confirmed')
+            ->count();
+
+        $occupancy = $this->units()->count() > 0
+            ? round(($confirmedBookings / ($this->units()->count() * 30)) * 100)
+            : 0;
+
+        return [
+            'bookings' => $confirmedBookings,
+            'revenue' => $revenue ?? 0,
+            'occupancy' => min($occupancy, 100),
+            'totalBookings' => $totalBookings,
+        ];
     }
 }

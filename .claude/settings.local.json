@@ -8,7 +8,11 @@
       "Bash(xargs grep -l \"Offer\")",
       "Bash(grep -r 'protected $fillable\\\\|protected $casts\\\\|has.*Through\\\\|belongsTo\\\\|hasMany\\\\|hasOne' app/Models/)",
       "Bash(cat)",
-      "Bash(bash /tmp/check_project.sh)"
+      "Bash(bash /tmp/check_project.sh)",
+      "Bash(grep -r \"use App\\\\\\\\\\\\\\\\Http\\\\\\\\\\\\\\\\Controllers\\\\\\\\\\\\\\\\Api\" /c/dev/masahati/routes/)",
+      "Bash(grep -o \"use App\\\\\\\\\\\\\\\\Http\\\\\\\\\\\\\\\\Controllers\\\\\\\\\\\\\\\\Api\\\\\\\\\\\\\\\\[^;]*\")",
+      "Bash(php artisan *)",
+      "Bash(php -l /c/dev/masahati/app/Models/Workspace.php)"
     ]
   }
 }

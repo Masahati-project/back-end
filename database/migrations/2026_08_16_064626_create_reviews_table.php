@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('workspace_id')->constrained()->cascadeOnDelete();
             $table->foreignId('booking_id')->nullable()->constrained()->nullOnDelete();
-            $table->enum('rating', [1, 2, 3, 4, 5]);
+            $table->integer('rating');
             $table->text('comment');
             $table->datetime('created_at');
         });

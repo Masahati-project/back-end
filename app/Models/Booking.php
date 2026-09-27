@@ -19,10 +19,6 @@ class Booking extends Model
         return $this->belongsTo(Unit::class);
     }
 
-    public function availabilitySlot(): HasOne
-    {
-        return $this->hasOne(AvailabilitySlot::class);
-    }
 
     public function payment(): HasOne
     {
@@ -34,8 +30,9 @@ class Booking extends Model
         return $this->hasOne(Review::class);
     }
 
-    public function supportTickets(): HasMany
+
+    public function isForOwner(User $owner): bool
     {
-        return $this->hasMany(SupportTicket::class);
+        return $this->unit->workspace->owner_id === $owner->id;
     }
 }

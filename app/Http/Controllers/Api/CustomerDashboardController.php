@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
-class DashboardController extends Controller
+class CustomerDashboardController extends Controller
 {
     public function stats(Request $request)
     {
@@ -61,7 +61,7 @@ class DashboardController extends Controller
                 $hours = $booking->start_datetime->diffInMinutes($booking->end_datetime) / 60;
                 return [
                     'booking_id' => $booking->id,
-                    'title' => $booking->unit->workspace->name,
+                    'title' => $booking->unit->workspace->title,
                     'image' => $booking->unit->workspace->images->first()?->image_url,
                     'date' => $booking->start_datetime->format('Y-m-d'),
                     'time' => $booking->start_datetime->format('H:i'),
@@ -83,7 +83,7 @@ class DashboardController extends Controller
             ->map(function ($booking) {
                 return [
                     'booking_id' => $booking->id,
-                    'space_name' => $booking->unit->workspace->name,
+                    'space_name' => $booking->unit->workspace->title,
                     'image' => $booking->unit->workspace->images->first()?->image_url,
                     'date' => $booking->start_datetime->format('Y-m-d'),
                     'time_from' => $booking->start_datetime->format('H:i'),
@@ -101,7 +101,7 @@ class DashboardController extends Controller
             ->with([
                 'workspace' => function ($q) {
                     $q->withAvg('reviews', 'rating')
-                        ->with(['images', 'units.pricing']);
+                        ->with(['images', 'units.pricing', 'amenities']);
                 },
             ])
             ->orderBy('created_at')->get()
@@ -110,10 +110,10 @@ class DashboardController extends Controller
                 $amenityNames = $workspace->amenities->pluck('name')->toArray();
                 return [
                     'space_id' => $workspace->id,
-                    'title' => $workspace->name,
+                    'title' => $workspace->title,
                     'image' => $workspace->images->first()?->image_url,
                     'rating' => round($workspace->reviews_avg_rating ?? 0, 1),
-                    'location' => trim($workspace->address . '، ' . $workspace->city, '، '),
+                    'location' => $workspace->location,
                     'price' => $workspace->units->first()?->pricing->first()?->price,
                     'power' => in_array('power', $amenityNames),
                     'wifi' => in_array('wifi', $amenityNames)

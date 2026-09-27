@@ -20,9 +20,9 @@ class SpacesController extends Controller
         $data = $spaces->getCollection()->map(function ($space) {
             return [
                 'space_id' => $space->id,
-                'title' => $space->name,
+                'title' => $space->title,
                 'description' => $space->description,
-                'location' => trim($space->address . '، ' . $space->city, '، '),
+                'location' => $space->location,
                 'image' => $space->images->first()?->image_url,
                 'rating' => round($space->reviews_avg_rating ?? 0, 1),
                 'price' => $space->units->first()?->pricing->first()?->price,

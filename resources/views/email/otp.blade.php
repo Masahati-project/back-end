@@ -22,7 +22,7 @@
                                 style="background-color:#ffffff;border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,0.1);">
                                 <tr>
                                     <td style="padding:12px 26px;">
-                                        <img src="{{ asset('images/WhatsApp Image 2026-09-13 at 11.06.59 AM.jpeg') }}"
+                                        <img src="{{ asset('images/masahati-logo-white.png') }}"
                                             alt="مساحاتي" width="150"
                                             style="display:block;margin:0 auto;max-width:150px;height:auto;">
                                     </td>
