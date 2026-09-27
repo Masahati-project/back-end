@@ -11,6 +11,29 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Workspace extends Model
 {
+    protected $fillable = [
+        'owner_id',
+        'space_document_url',
+        'title',
+        'description',
+        'location',
+        'latitude',
+        'longitude',
+        'contact_phone',
+        'status',
+        'open_time',
+        'close_time',
+        'is_closed',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_closed' => 'boolean',
+        'is_active' => 'boolean',
+        'latitude' => 'float',
+        'longitude' => 'float',
+    ];
+
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
@@ -71,13 +94,13 @@ class Workspace extends Model
     {
         $confirmedBookings = $this->bookings()
             ->where('status', 'confirmed')
-            ->whereMonth('created_at', now()->month)
+            ->whereMonth('bookings.created_at', now()->month)
             ->count();
 
         $revenue = $this->bookings()
             ->where('status', 'confirmed')
-            ->whereMonth('created_at', now()->month)
-            ->sum('price');
+            ->whereMonth('bookings.created_at', now()->month)
+            ->sum('total_price');
 
         $totalBookings = $this->bookings()
             ->where('status', 'confirmed')

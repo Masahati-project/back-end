@@ -8,14 +8,26 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Unit extends Model
 {
+    public $timestamps = false;
+
+    protected $fillable = [
+        'workspace_id',
+        'type',
+        'capacity',
+        'has_wifi',
+        'has_power',
+        'status',
+    ];
+
+    protected $casts = [
+        'has_wifi' => 'boolean',
+        'has_power' => 'boolean',
+        'capacity' => 'integer',
+    ];
+
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
-    }
-
-    public function availabilitySlots(): HasMany
-    {
-        return $this->hasMany(AvailabilitySlot::class);
     }
 
     public function pricing(): HasMany
