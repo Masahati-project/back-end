@@ -12,13 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         DB::table('users')->insert([
-            'full_name' => 'مصعب علي لمن',
+            'full_name' => 'أدمن',
             'email' => 'masahati@outlook.com',
             'phone' => '0501234567',
             'password' => Hash::make('admin123456'),
             'role' => 'admin',
             'status' => 'active',
-            'email_verified_at' => now(),
+            'verified_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
