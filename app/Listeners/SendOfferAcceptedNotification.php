@@ -22,11 +22,14 @@ class SendOfferAcceptedNotification
      */
     public function handle(OfferAccepted $event): void
     {
-        $workspaceName = $event->specialRequest->workspace?->name ?? 'المساحة';
+        $workspace = $event->offer->workspace;
+
+        // The offer belongs to the space owner, so that is who gets told. Notifying
+        // the request owner would tell the customer their own offer was accepted.
         NotificationService::createForOffer(
-            $event->specialRequest->user_id,
+            $workspace?->owner_id ?? $event->specialRequest->user_id,
             'accepted',
-            $workspaceName
+            $workspace?->title ?? 'المساحة'
         );
     }
 }

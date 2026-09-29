@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -19,7 +20,7 @@ use Override;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use  HasFactory, Notifiable, HasApiTokens;
+    use  HasFactory, Notifiable, HasApiTokens, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -109,11 +110,6 @@ class User extends Authenticatable
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
-    }
-
-    public function supportTickets(): HasMany
-    {
-        return $this->hasMany(SupportTicket::class);
     }
 
     public function reviews(): HasMany

@@ -129,6 +129,15 @@ class AuthController extends Controller
                 'message' => 'تم تسجيل دخولك بنجاح',
                 'token'   => $token,
                 'name'    => $user->full_name,
+                // Added so the client can route straight to the right dashboard
+                // instead of issuing a second request to /api/profile.
+                'user'    => [
+                    'id'    => $user->id,
+                    'name'  => $user->full_name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'role'  => $user->role,
+                ],
             ], 200);
         }
 
@@ -155,7 +164,7 @@ class AuthController extends Controller
         User::deleteProofDocument($user->proof_document_url);
         User::deletePicture($user->profile_picture_url);
         $user->tokens()->delete();
-        $user->delete();
+        $user->forceDelete();
 
         return response()->json([
             'message' => 'تم حذف الحساب بنجاح'

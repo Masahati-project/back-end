@@ -12,8 +12,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Add 'disputed' to the status enum
-        DB::statement("ALTER TABLE bookings MODIFY COLUMN status ENUM('pending', 'confirmed', 'checked_in', 'completed', 'cancelled', 'disputed') NOT NULL");
+        // Add 'disputed' to the status enum. SQLite has no ENUM type and rejects
+        // MODIFY COLUMN, so the statement is skipped outside MySQL. The column is
+        // created by an earlier migration as a plain string there, which is fine.
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE bookings MODIFY COLUMN status ENUM('pending', 'confirmed', 'checked_in', 'completed', 'cancelled', 'disputed') NOT NULL");
+        }
 
         Schema::table('bookings', function (Blueprint $table) {
             $table->string('ref', 20)->unique()->nullable()->after('id');
@@ -29,6 +33,8 @@ return new class extends Migration
             $table->dropColumn('ref');
         });
 
-        DB::statement("ALTER TABLE bookings MODIFY COLUMN status ENUM('pending', 'confirmed', 'checked_in', 'completed', 'cancelled') NOT NULL");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE bookings MODIFY COLUMN status ENUM('pending', 'confirmed', 'checked_in', 'completed', 'cancelled') NOT NULL");
+        }
     }
 };

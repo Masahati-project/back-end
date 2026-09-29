@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Models\Offer;
 use App\Models\SpecialRequest;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -18,7 +19,7 @@ class OfferAccepted
     /**
      * Create a new event instance.
      */
-    public function __construct(public SpecialRequest $specialRequest)
+    public function __construct(public SpecialRequest $specialRequest, public Offer $offer)
     {
         //
     }

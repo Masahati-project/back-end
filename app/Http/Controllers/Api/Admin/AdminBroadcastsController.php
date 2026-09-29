@@ -62,17 +62,17 @@ class AdminBroadcastsController extends Controller
      */
     public function audienceCounts()
     {
-        $all = User::whereIn('role', ['freelancer', 'owner'])
+        $all = User::whereIn('role', ['customer', 'space_owner'])
             ->where('status', 'active')
             ->whereNotNull('verified_at')
             ->count();
 
-        $owners = User::where('role', 'owner')
+        $owners = User::where('role', 'space_owner')
             ->where('status', 'active')
             ->whereNotNull('verified_at')
             ->count();
 
-        $freelancers = User::where('role', 'freelancer')
+        $freelancers = User::where('role', 'customer')
             ->where('status', 'active')
             ->whereNotNull('verified_at')
             ->count();
@@ -107,14 +107,14 @@ class AdminBroadcastsController extends Controller
 
         $user = $request->user();
 
-        $query = User::whereIn('role', ['freelancer', 'owner'])
+        $query = User::whereIn('role', ['customer', 'space_owner'])
             ->where('status', 'active')
             ->whereNotNull('verified_at');
 
         if ($request->target === 'owners') {
-            $query->where('role', 'owner');
+            $query->where('role', 'space_owner');
         } elseif ($request->target === 'freelancers') {
-            $query->where('role', 'freelancer');
+            $query->where('role', 'customer');
         }
 
         $total = $query->count();

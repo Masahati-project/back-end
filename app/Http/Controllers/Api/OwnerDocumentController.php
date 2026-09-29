@@ -125,10 +125,14 @@ class OwnerDocumentController extends Controller
 
         return [
             'status' => $document->status,
-            'files' => $filesBySlot,
+            // Cast so an owner with no files gets {} rather than [], which would
+            // break a client reading files.assets / files.cert.
+            'files' => (object) $filesBySlot,
             'note' => $document->note,
             'review_note' => $document->note,
-            'admin_note' => $document->note,
+            // The documents table has no admin-facing note column, so this stays
+            // null until one exists. It previously mirrored `note`.
+            'admin_note' => null,
             'submitted_at' => $document->submitted_at?->toIso8601String(),
             'submittedAt' => $document->submitted_at?->toIso8601String(),
             'reviewed_at' => $document->reviewed_at?->toIso8601String(),

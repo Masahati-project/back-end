@@ -26,6 +26,13 @@
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_URL" value=""/>
+        <!--
+            Override the two lines above to run the suite against MySQL, e.g. on CI:
+                $env:DB_CONNECTION = 'mysql'
+                $env:DB_DATABASE   = 'masahati_testing'
+            PHPUnit's <env> only applies a value when it is not already set in the
+            real environment, so these defaults stay in place for local runs.
+        -->
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

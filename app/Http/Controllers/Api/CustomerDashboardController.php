@@ -92,7 +92,7 @@ class CustomerDashboardController extends Controller
                 ];
             });
 
-        return response()->json(['data' => $bookings], 201);
+        return response()->json(['data' => $bookings], 200);
     }
 
     public function favoriteSpaces(Request $request)
@@ -120,7 +120,7 @@ class CustomerDashboardController extends Controller
                 ];
             });
 
-        return response()->json(['data' => $favorites], 201);
+        return response()->json(['data' => $favorites], 200);
     }
 
     public function toggle(Request $request)

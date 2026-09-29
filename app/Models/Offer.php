@@ -7,6 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Offer extends Model
 {
+    /**
+     * The offers table only has created_at, so Eloquent must not try to write
+     * updated_at as well.
+     */
+    const UPDATED_AT = null;
+
     protected $fillable = [
         'special_request_id',
         'workspace_id',

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AdminUsersController extends Controller
 {
@@ -15,7 +16,7 @@ class AdminUsersController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::whereIn('role', ['freelancer', 'owner']);
+        $query = User::whereIn('role', ['customer', 'space_owner']);
 
         // Search
         if ($request->has('q')) {
@@ -75,7 +76,7 @@ class AdminUsersController extends Controller
      */
     public function stats(Request $request)
     {
-        $query = User::whereIn('role', ['freelancer', 'owner']);
+        $query = User::whereIn('role', ['customer', 'space_owner']);
 
         if ($request->has('q')) {
             $q = $request->q;
@@ -88,8 +89,8 @@ class AdminUsersController extends Controller
         return response()->json([
             'data' => [
                 'total' => $query->count(),
-                'activeFreelancers' => (clone $query)->where('role', 'freelancer')->where('status', 'active')->count(),
-                'owners' => (clone $query)->where('role', 'owner')->count(),
+                'activeFreelancers' => (clone $query)->where('role', 'customer')->where('status', 'active')->count(),
+                'owners' => (clone $query)->where('role', 'space_owner')->count(),
                 'pendingVerif' => (clone $query)->whereNull('verified_at')->count(),
                 'suspended' => (clone $query)->where('status', 'suspended')->count(),
             ]
@@ -225,8 +226,7 @@ class AdminUsersController extends Controller
         }
 
         $user->tokens()->delete();
-        $user->deleted_at = now();
-        $user->save();
+        $user->delete();
 
         return response()->noContent();
     }
@@ -267,7 +267,7 @@ class AdminUsersController extends Controller
      */
     public function export(Request $request)
     {
-        $query = User::whereIn('role', ['freelancer', 'owner']);
+        $query = User::whereIn('role', ['customer', 'space_owner']);
 
         if ($request->has('q')) {
             $q = $request->q;

@@ -22,11 +22,12 @@ class SendOfferRejectedNotification
      */
     public function handle(OfferRejected $event): void
     {
-        $workspaceName = $event->specialRequest->workspace?->name ?? 'المساحة';
+        $workspace = $event->offer->workspace;
+
         NotificationService::createForOffer(
-            $event->specialRequest->user_id,
+            $workspace?->owner_id ?? $event->specialRequest->user_id,
             'rejected',
-            $workspaceName
+            $workspace?->title ?? 'المساحة'
         );
     }
 }

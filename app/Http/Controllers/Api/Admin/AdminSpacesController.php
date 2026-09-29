@@ -197,15 +197,14 @@ class AdminSpacesController extends Controller
     {
         $space = Workspace::findOrFail($id);
 
-        if ($space->bookings()->where('status', 'confirmed')->exists()) {
+        if ($space->bookings()->where('bookings.status', 'confirmed')->exists()) {
             return response()->json([
                 'message' => 'Cannot delete space with upcoming bookings',
                 'errors' => []
             ], 409);
         }
 
-        $space->deleted_at = now();
-        $space->save();
+        $space->delete();
 
         return response()->noContent();
     }

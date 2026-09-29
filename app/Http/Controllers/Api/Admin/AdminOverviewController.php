@@ -23,8 +23,8 @@ class AdminOverviewController extends Controller
         $settings = PlatformSetting::current();
         $commissionRate = $settings->commission_rate / 100;
 
-        $totalUsers = User::whereIn('role', ['freelancer', 'owner'])->count();
-        $spaceOwners = User::where('role', 'owner')->count();
+        $totalUsers = User::whereIn('role', ['customer', 'space_owner'])->count();
+        $spaceOwners = User::where('role', 'space_owner')->count();
         $registeredSpaces = Workspace::count();
         $monthlyBookings = Booking::whereMonth('created_at', now()->month)->count();
 
@@ -71,8 +71,15 @@ class AdminOverviewController extends Controller
 
         $startDate = now()->subMonths($months - 1)->startOfMonth();
 
+        // DATE_FORMAT is MySQL-only; strftime is the SQLite equivalent. Pick the
+        // expression from the active driver so the test suite can run on SQLite
+        // while production keeps using the native MySQL function.
+        $monthKeyExpression = DB::getDriverName() === 'mysql'
+            ? "DATE_FORMAT(created_at, '%Y-%m')"
+            : "strftime('%Y-%m', created_at)";
+
         $data = Booking::select(
-            DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month_key'),
+            DB::raw("{$monthKeyExpression} as month_key"),
             DB::raw('SUM(total_price) as revenue'),
             DB::raw('COUNT(*) as bookings')
         )
@@ -136,7 +143,7 @@ class AdminOverviewController extends Controller
         $limit = $request->integer('limit', 5);
         $limit = min(max($limit, 1), 50);
 
-        $users = User::whereIn('role', ['freelancer', 'owner'])
+        $users = User::whereIn('role', ['customer', 'space_owner'])
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get()

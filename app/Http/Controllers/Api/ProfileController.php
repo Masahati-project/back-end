@@ -28,7 +28,7 @@ class ProfileController extends Controller
             'proof_document' => $user->proof_document_url
                 ? Storage::url($user->proof_document_url)
                 : null,
-        ], 201);
+        ], 200);
     }
 
     public function updateOwnerProfile(OwnerProfileUpdateRequest $request)

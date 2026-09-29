@@ -76,16 +76,32 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/spaces', [SpacesController::class, 'index'])->name('spaces');
 
     // Special Requests Routes
+    // The literal /open route must be declared before /{requestId}, otherwise the
+    // {requestId} segment swallows "open". whereNumber() makes that impossible
+    // regardless of declaration order.
     Route::get('/special-requests', [SpecialRequestController::class, 'index'])->name('special-requests.index');
     Route::post('/special-requests', [SpecialRequestController::class, 'store'])->name('special-requests.store');
-    Route::get('/special-requests/{requestId}', [SpecialRequestController::class, 'show'])->name('special-requests.show');
-    Route::post('/special-requests/{requestId}/offers/{offerId}/accept', [SpecialRequestController::class, 'acceptOffer'])->name('special-requests.accept-offer');
-    Route::post('/special-requests/{requestId}/offers/{offerId}/reject', [SpecialRequestController::class, 'rejectOffer'])->name('special-requests.reject-offer');
-    Route::post('/special-requests/{requestId}/close', [SpecialRequestController::class, 'closeRequest'])->name('special-requests.close');
+    Route::get('/special-requests/open', [SpecialRequestController::class, 'open'])->name('special-requests.open');
+    Route::post('/special-requests/{requestId}/offers', [SpecialRequestController::class, 'storeOffer'])
+        ->whereNumber('requestId')
+        ->name('special-requests.offers.store');
+    Route::get('/special-requests/{requestId}', [SpecialRequestController::class, 'show'])
+        ->whereNumber('requestId')
+        ->name('special-requests.show');
+    Route::post('/special-requests/{requestId}/offers/{offerId}/accept', [SpecialRequestController::class, 'acceptOffer'])
+        ->whereNumber('requestId')->whereNumber('offerId')
+        ->name('special-requests.accept-offer');
+    Route::post('/special-requests/{requestId}/offers/{offerId}/reject', [SpecialRequestController::class, 'rejectOffer'])
+        ->whereNumber('requestId')->whereNumber('offerId')
+        ->name('special-requests.reject-offer');
+    Route::post('/special-requests/{requestId}/close', [SpecialRequestController::class, 'closeRequest'])
+        ->whereNumber('requestId')
+        ->name('special-requests.close');
 
     // Notifications Routes
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::post('/notifications/read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
+    Route::match(['post', 'patch'], '/notifications/read', [NotificationController::class, 'markAllAsRead'])
+        ->name('notifications.mark-all-as-read');
 
     // Owner Routes (Space Owner Dashboard)
     Route::middleware('auth:sanctum')->prefix('owner')->group(function () {
@@ -119,7 +135,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Admin Routes
-    Route::prefix('admin')->group(function () {
+    Route::middleware('admin')->prefix('admin')->group(function () {
         Route::post('/logout', [AdminAuthController::class, 'logout']);
         Route::get('/me', [AdminAuthController::class, 'me']);
         Route::patch('/profile', [AdminAuthController::class, 'updateProfile']);
