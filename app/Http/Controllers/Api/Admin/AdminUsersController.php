@@ -89,6 +89,9 @@ class AdminUsersController extends Controller
         return response()->json([
             'data' => [
                 'total' => $query->count(),
+                'activeCustomers' => (clone $query)->where('role', 'customer')->where('status', 'active')->count(),
+                // Alias kept for the existing admin panel; the role used to be
+                // called "freelancer" before the rename to "customer".
                 'activeFreelancers' => (clone $query)->where('role', 'customer')->where('status', 'active')->count(),
                 'owners' => (clone $query)->where('role', 'space_owner')->count(),
                 'pendingVerif' => (clone $query)->whereNull('verified_at')->count(),
@@ -187,7 +190,9 @@ class AdminUsersController extends Controller
             'name' => 'sometimes|string|min:1|max:120',
             'email' => 'sometimes|email|unique:users,email,' . $id,
             'phone' => 'sometimes|string|max:30',
-            'role' => 'sometimes|in:freelancer,owner',
+            // The admin panel still sends the legacy names, so both spellings are
+            // accepted here and normalised to the values the users.role enum holds.
+            'role' => 'sometimes|in:customer,space_owner,admin,freelancer,owner',
         ]);
 
         if ($request->has('name')) {
@@ -200,7 +205,11 @@ class AdminUsersController extends Controller
             $user->phone = $request->phone;
         }
         if ($request->has('role')) {
-            $user->role = $request->role;
+            $user->role = match ($request->role) {
+                'freelancer' => 'customer',
+                'owner' => 'space_owner',
+                default => $request->role,
+            };
         }
 
         $user->save();

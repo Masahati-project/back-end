@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Broadcast extends Model
 {
+    // The table has neither created_at nor updated_at; it tracks sent_at instead.
+    const CREATED_AT = null;
     const UPDATED_AT = null;
 
     protected $fillable = [
