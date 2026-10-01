@@ -150,7 +150,7 @@ class AdminFinancialsController extends Controller
         return response()->json([
             'data' => $bookings->map(fn($b) => [
                 'id' => $b->id,
-                'ref' => $b->ref ?? '#BK-' . $b->id,
+                'ref' => $b->ref ?: 'BK-' . $b->id,
                 'date' => $b->created_at->format('Y-m-d'),
                 'space' => $b->unit->workspace->title,
                 'owner' => $b->unit->workspace->owner->full_name,
@@ -193,7 +193,7 @@ class AdminFinancialsController extends Controller
         foreach ($bookings as $b) {
             $hours = $b->start_datetime->diffInHours($b->end_datetime);
             $csv .= implode(',', [
-                $b->ref ?? '#BK-' . $b->id,
+                $b->ref ?: 'BK-' . $b->id,
                 $b->created_at->format('Y-m-d'),
                 $b->unit->workspace->title,
                 $b->unit->workspace->owner->full_name,

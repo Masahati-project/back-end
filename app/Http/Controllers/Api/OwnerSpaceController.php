@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Amenity;
 use App\Models\Workspace;
 use App\Services\ImageService;
 use App\Traits\OwnerAuthorization;
@@ -42,6 +43,7 @@ class OwnerSpaceController extends Controller
             'power' => 'required|boolean',
             'image' => 'nullable|string',
             'docs' => 'nullable|array',
+            'space_document_url' => 'nullable|string|max:255',
             'open_time' => 'required',
             'close_time' => 'required',
             'contact_phone' => 'required'
@@ -50,14 +52,19 @@ class OwnerSpaceController extends Controller
         $space = Workspace::create([
             'owner_id' => Auth::id(),
             'title' => $validated['title'],
-            'description' => $validated['description'],
+            'description' => $validated['description'] ?? null,
             'location' => $validated['location'],
             'latitude' => $validated['lat'],
             'longitude' => $validated['lng'],
             'status' => 'pending',
-            'opne_time' => $validated['open_time'],
+            'open_time' => $validated['open_time'],
             'close_time' => $validated['close_time'],
-            'is_closed' => false
+            'contact_phone' => $validated['contact_phone'],
+            // Optional: an owner may create the space before the document
+            // exists, hence a nullable column instead of a NOT NULL one.
+            'space_document_url' => $validated['space_document_url'] ?? null,
+            'is_closed' => false,
+            'is_active' => false,
         ]);
 
         // Store image in workspace_images table
@@ -94,8 +101,7 @@ class OwnerSpaceController extends Controller
             foreach ($validated['amenities'] as $amenity) {
                 $amenityName = is_array($amenity) ? ($amenity['name'] ?? $amenity['key'] ?? null) : $amenity;
                 if ($amenityName) {
-                    $amenityModel = \App\Models\Amenity::firstOrCreate(['name' => $amenityName]);
-                    $amenityIds[] = $amenityModel->id;
+                    $amenityIds[] = $this->resolveAmenityId($amenityName);
                 }
             }
             $space->amenities()->sync($amenityIds);
@@ -194,8 +200,7 @@ class OwnerSpaceController extends Controller
             foreach ($validated['amenities'] as $amenity) {
                 $amenityName = is_array($amenity) ? ($amenity['name'] ?? $amenity['key'] ?? null) : $amenity;
                 if ($amenityName) {
-                    $amenityModel = \App\Models\Amenity::firstOrCreate(['name' => $amenityName]);
-                    $amenityIds[] = $amenityModel->id;
+                    $amenityIds[] = $this->resolveAmenityId($amenityName);
                 }
             }
             $space->amenities()->sync($amenityIds);
@@ -244,6 +249,18 @@ class OwnerSpaceController extends Controller
         $space->delete();
 
         return response()->json(['message' => 'تم حذف المساحة.']);
+    }
+
+    /**
+     * Resolve an amenity by name, creating it when missing.
+     *
+     * icon is NOT NULL with no default, so it has to be supplied on create.
+     * Nothing in the app reads the column — responses carry amenity names only
+     * — so a neutral placeholder is enough.
+     */
+    private function resolveAmenityId(string $name): int
+    {
+        return (int) Amenity::firstOrCreate(['name' => $name], ['icon' => 'check'])->id;
     }
 
     private function formatSpaceResponse(Workspace $space)

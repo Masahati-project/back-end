@@ -57,13 +57,22 @@ class Booking extends Model
     }
 
     /**
-     * Generate unique booking reference
+     * Build the booking reference.
+     *
+     * The value is derived from the primary key, which the caller only knows
+     * after the insert. Computing it from the highest existing id beforehand
+     * races: two concurrent bookings read the same "last" row and the unique
+     * index on ref then rejects the second insert.
+     *
+     * No leading "#": the reference travels in the path of
+     * GET /api/admin/bookings/{ref}, and everything from a "#" onwards is a
+     * fragment that the client strips before the request is sent. A ref of
+     * "#BK-1" would therefore be sent as a bare /api/admin/bookings/ and land
+     * on the listing route instead of the detail route.
      */
-    public static function generateRef(): string
+    public static function generateRef(int $id): string
     {
-        $lastBooking = static::latest('id')->first();
-        $nextNumber = $lastBooking ? ($lastBooking->id + 1) : 1000;
-        return '#BK-' . $nextNumber;
+        return 'BK-' . $id;
     }
 
     /**

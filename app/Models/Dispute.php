@@ -36,12 +36,18 @@ class Dispute extends Model
     }
 
     /**
-     * Generate unique dispute reference
+     * Build the dispute reference.
+     *
+     * Takes the id rather than reading the table, because the value is only
+     * known after the insert and deriving it from the highest existing id
+     * races against concurrent inserts on the unique ref column.
+     *
+     * No leading "#": the reference travels in the path of
+     * /api/admin/disputes/{ref}, and a "#" starts a fragment that the client
+     * strips, so "#DIS-001" would be sent as a bare /api/admin/disputes/.
      */
-    public static function generateRef(): string
+    public static function generateRef(int $id): string
     {
-        $lastDispute = static::latest('id')->first();
-        $nextNumber = $lastDispute ? ($lastDispute->id + 1) : 1;
-        return '#DIS-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+        return 'DIS-' . str_pad((string) $id, 3, '0', STR_PAD_LEFT);
     }
 }

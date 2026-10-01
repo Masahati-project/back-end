@@ -10,6 +10,27 @@ use Illuminate\Http\Request;
 class AdminDisputesController extends Controller
 {
     /**
+     * Resolve a dispute from the {ref} path segment.
+     *
+     * A "#" cannot survive the trip through a URL, so references are stored and
+     * sent without one. Rows written before that was fixed still carry it, so
+     * both spellings are accepted rather than 404-ing on legacy data.
+     */
+    private function findDispute(string $ref): Dispute
+    {
+        $bare = ltrim($ref, '#');
+        $candidates = [$bare, '#' . $bare];
+
+        // The panel may show the bare number, so "7" and "007" also resolve.
+        if (ctype_digit($bare)) {
+            $candidates[] = 'DIS-' . str_pad($bare, 3, '0', STR_PAD_LEFT);
+            $candidates[] = '#DIS-' . str_pad($bare, 3, '0', STR_PAD_LEFT);
+        }
+
+        return Dispute::whereIn('ref', $candidates)->firstOrFail();
+    }
+
+    /**
      * List disputes
      * GET /api/admin/disputes
      */
@@ -57,8 +78,7 @@ class AdminDisputesController extends Controller
      */
     public function show($ref)
     {
-        $ref = str_starts_with($ref, '#') ? $ref : '#DIS-' . $ref;
-        $dispute = Dispute::where('ref', $ref)->orWhere('ref', ltrim($ref, '#'))->firstOrFail();
+        $dispute = $this->findDispute($ref);
 
         return response()->json([
             'data' => [
@@ -94,8 +114,7 @@ class AdminDisputesController extends Controller
      */
     public function resolve(Request $request, $ref)
     {
-        $ref = str_starts_with($ref, '#') ? $ref : '#DIS-' . $ref;
-        $dispute = Dispute::where('ref', $ref)->orWhere('ref', ltrim($ref, '#'))->firstOrFail();
+        $dispute = $this->findDispute($ref);
 
         if ($dispute->status !== 'open') {
             return response()->json([

@@ -69,8 +69,10 @@ class AdminBookingsController extends Controller
      */
     public function show($ref)
     {
-        $ref = str_starts_with($ref, '#') ? $ref : '#' . $ref;
-        $booking = Booking::where('ref', $ref)->orWhere('ref', ltrim($ref, '#'))->firstOrFail();
+        // Accept the stored form and the display form. Older rows may still
+        // carry a leading "#", so both are tried.
+        $bare = ltrim($ref, '#');
+        $booking = Booking::whereIn('ref', [$bare, '#' . $bare])->firstOrFail();
 
         return response()->json([
             'data' => array_merge(
@@ -129,7 +131,7 @@ class AdminBookingsController extends Controller
 
         return [
             'id' => $booking->id,
-            'ref' => $booking->ref ?? '#BK-' . $booking->id,
+            'ref' => $booking->ref ?: 'BK-' . $booking->id,
             'user' => $booking->user->full_name,
             'space' => $booking->unit->workspace->title,
             'date' => $booking->start_datetime->format('Y-m-d'),

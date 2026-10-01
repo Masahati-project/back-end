@@ -68,7 +68,9 @@ class Workspace extends Model
 
     public function favoritedByUsers(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'favorites')->using(Favorite::class)->withTimestamps();
+        // No ->using(Favorite::class): it routes attach() through a model save
+        // on a Pivot subclass, and the toggle endpoint no longer needs it.
+        return $this->belongsToMany(User::class, 'favorites')->withTimestamps();
     }
 
     public function verification(): HasOne

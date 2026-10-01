@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\Dispute;
 use App\Models\Document;
 use App\Models\DocumentFile;
 use App\Models\Notification;
@@ -11,7 +12,9 @@ use App\Models\SpecialRequest;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class SpecialRequestTest extends TestCase
@@ -617,6 +620,245 @@ class SpecialRequestTest extends TestCase
             'status' => 'pending',
             'total_price' => 450,
         ]);
+    }
+
+    public function test_the_booking_from_an_accepted_offer_gets_a_reference(): void
+    {
+        // GET /api/admin/bookings/{ref} looks the column up directly, so a
+        // booking saved without a ref can never be opened from the admin panel.
+        $customer = $this->customer();
+        $owner = $this->owner();
+        $specialRequest = $this->requestFrom($customer);
+        $workspace = $this->workspaceFor($owner);
+
+        $offer = Offer::create([
+            'special_request_id' => $specialRequest->id,
+            'workspace_id' => $workspace->id,
+            'price_per_hour' => 150,
+            'duration_hours' => 3,
+            'status' => 'pending',
+        ]);
+
+        $this->withToken($this->token($customer))
+            ->postJson("/api/special-requests/{$specialRequest->id}/offers/{$offer->id}/accept")
+            ->assertStatus(200);
+
+        $booking = Booking::where('user_id', $customer->id)->firstOrFail();
+
+        $this->assertSame('BK-' . $booking->id, $booking->ref);
+    }
+
+    public function test_an_admin_can_open_a_booking_by_its_reference(): void
+    {
+        // Split from the accept test on purpose: withToken() cannot replace a
+        // bearer token that is already set on the test case.
+        $admin = User::factory()->create(['role' => 'admin']);
+        $unit = $this->workspaceFor($this->owner())->units()->first();
+        $user = $this->customer();
+
+        $booking = Booking::create([
+            'ref' => 'BK-4242',
+            'user_id' => $user->id,
+            'unit_id' => $unit->id,
+            'start_datetime' => now()->addDay()->setTime(10, 0),
+            'end_datetime' => now()->addDay()->setTime(13, 0),
+            'status' => 'pending',
+            'total_price' => 450,
+        ]);
+
+        $token = $this->token($admin);
+
+        $this->withToken($token)
+            ->getJson('/api/admin/bookings/' . $booking->ref)
+            ->assertStatus(200)
+            ->assertJsonPath('data.id', $booking->id)
+            ->assertJsonPath('data.ref', 'BK-4242');
+
+        // Rows written while refs still carried a "#" stay reachable.
+        $legacy = Booking::create([
+            'ref' => '#BK-7777',
+            'user_id' => $user->id,
+            'unit_id' => $unit->id,
+            'start_datetime' => now()->addDay()->setTime(10, 0),
+            'end_datetime' => now()->addDay()->setTime(13, 0),
+            'status' => 'pending',
+            'total_price' => 450,
+        ]);
+
+        $this->withToken($token)
+            ->getJson('/api/admin/bookings/BK-7777')
+            ->assertStatus(200)
+            ->assertJsonPath('data.id', $legacy->id);
+    }
+
+    // -------------------------------------------------------------------------
+    // Backfill of historic refs — see the migration that these tests drive:
+    // database/migrations/2026_10_01_130000_backfill_missing_booking_and_dispute_refs.php
+    // -------------------------------------------------------------------------
+
+    /**
+     * Run the backfill migration the way `php artisan migrate` would.
+     *
+     * RefreshDatabase already applied it once for this test run, against an
+     * empty bookings/disputes table, so it was a no-op. Re-running it here is
+     * what proves it does something on the rows the historic data left behind.
+     */
+    private function runRefBackfill(): void
+    {
+        $migration = require database_path(
+            'migrations/2026_10_01_130000_backfill_missing_booking_and_dispute_refs.php'
+        );
+
+        $migration->up();
+    }
+
+    /**
+     * disputes.ref is declared NOT NULL by the migration that created the
+     * table, yet production carries NULL refs on the rows written before the
+     * reference convention was settled. Relax the constraint so a test can
+     * reproduce the shape the backfill actually has to repair; without this the
+     * insert of a NULL ref is rejected outright and the backfill is untested.
+     */
+    private function allowNullDisputeRefs(): void
+    {
+        Schema::table('disputes', fn (Blueprint $table) => $table->string('ref')->nullable()->change());
+    }
+
+    private function aBooking(?string $ref, User $user, Unit $unit): Booking
+    {
+        return Booking::create([
+            'ref' => $ref,
+            'user_id' => $user->id,
+            'unit_id' => $unit->id,
+            'start_datetime' => now()->addDay()->setTime(10, 0),
+            'end_datetime' => now()->addDay()->setTime(13, 0),
+            'status' => 'pending',
+            'total_price' => 450,
+        ]);
+    }
+
+    private function aDispute(?string $ref, Booking $booking, User $user, string $status = 'open'): Dispute
+    {
+        return Dispute::create([
+            'ref' => $ref,
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'issue' => 'نزاع على الحجز',
+            'status' => $status,
+            'opened_at' => now(),
+        ]);
+    }
+
+    public function test_the_backfill_fills_missing_booking_and_dispute_references(): void
+    {
+        // The admin detail endpoints resolve a ref straight out of the URL, so
+        // a NULL ref means the row can never be opened from the panel.
+        $this->allowNullDisputeRefs();
+
+        $user = $this->customer();
+        $unit = $this->workspaceFor($this->owner())->units()->first();
+
+        $nullBooking = $this->aBooking(null, $user, $unit);
+        $blankBooking = $this->aBooking('', $user, $unit);
+        $nullDispute = $this->aDispute(null, $nullBooking, $user);
+        $blankDispute = $this->aDispute('', $nullBooking, $user);
+
+        $this->runRefBackfill();
+
+        // No "#" prefix: a "#" in a path segment is read as the start of the
+        // fragment and stripped by the client before the request is sent.
+        $this->assertSame('BK-' . $nullBooking->id, $nullBooking->fresh()->ref);
+        $this->assertSame('BK-' . $blankBooking->id, $blankBooking->fresh()->ref);
+
+        // Dispute ids are padded to three digits.
+        $this->assertSame('DIS-' . str_pad((string) $nullDispute->id, 3, '0', STR_PAD_LEFT), $nullDispute->fresh()->ref);
+        $this->assertSame('DIS-' . str_pad((string) $blankDispute->id, 3, '0', STR_PAD_LEFT), $blankDispute->fresh()->ref);
+
+        $this->assertMatchesRegularExpression('/^BK-\d+$/', $nullBooking->fresh()->ref);
+        $this->assertMatchesRegularExpression('/^DIS-\d{3,}$/', $nullDispute->fresh()->ref);
+    }
+
+    public function test_the_backfill_pads_dispute_ids_to_three_digits(): void
+    {
+        // id 1 must become DIS-001 and id 11 must become DIS-011 — not DIS-1,
+        // not DIS-11, not DIS-00011.
+        $this->allowNullDisputeRefs();
+
+        $user = $this->customer();
+        $booking = $this->aBooking(null, $user, $this->workspaceFor($this->owner())->units()->first());
+
+        $disputes = collect(range(1, 11))->map(fn () => $this->aDispute(null, $booking, $user));
+
+        $this->runRefBackfill();
+
+        $this->assertSame('DIS-001', $disputes->first()->fresh()->ref);
+        $this->assertSame('DIS-011', $disputes->last()->fresh()->ref);
+
+        $refs = $disputes->map(fn (Dispute $d) => $d->fresh()->ref)->all();
+
+        $this->assertCount(11, array_unique($refs), 'Backfilled dispute refs collided.');
+    }
+
+    public function test_running_the_backfill_twice_changes_nothing(): void
+    {
+        $this->allowNullDisputeRefs();
+
+        $user = $this->customer();
+        $unit = $this->workspaceFor($this->owner())->units()->first();
+
+        $booking = $this->aBooking(null, $user, $unit);
+        $alreadyFilled = $this->aBooking('BK-4242', $user, $unit);
+        $dispute = $this->aDispute(null, $booking, $user);
+
+        $this->runRefBackfill();
+
+        $afterFirstRun = [
+            'bookings' => Booking::orderBy('id')->pluck('ref', 'id')->all(),
+            'disputes' => Dispute::orderBy('id')->pluck('ref', 'id')->all(),
+        ];
+
+        $this->runRefBackfill();
+
+        // A second pass finds no NULL / '' row left to write, so every ref —
+        // backfilled or pre-existing — is byte for byte what it was.
+        $this->assertSame($afterFirstRun['bookings'], Booking::orderBy('id')->pluck('ref', 'id')->all());
+        $this->assertSame($afterFirstRun['disputes'], Dispute::orderBy('id')->pluck('ref', 'id')->all());
+
+        $this->assertSame('BK-4242', $alreadyFilled->fresh()->ref);
+        $this->assertSame('BK-' . $booking->id, $booking->fresh()->ref);
+        $this->assertSame('DIS-' . str_pad((string) $dispute->id, 3, '0', STR_PAD_LEFT), $dispute->fresh()->ref);
+    }
+
+    public function test_the_backfill_leaves_a_legacy_hash_prefixed_reference_alone(): void
+    {
+        // Rows written while refs still carried a "#" must keep it: the panel
+        // already links to them, and the controllers accept both spellings.
+        $admin = User::factory()->create(['role' => 'admin']);
+        $user = $this->customer();
+        $unit = $this->workspaceFor($this->owner())->units()->first();
+
+        $legacy = $this->aBooking('#BK-7777', $user, $unit);
+        $missing = $this->aBooking(null, $user, $unit);
+
+        $this->runRefBackfill();
+
+        $this->assertSame('#BK-7777', $legacy->fresh()->ref);
+        $this->assertSame('BK-' . $missing->id, $missing->fresh()->ref);
+
+        // Still resolvable through the endpoint, under both spellings.
+        $token = $this->token($admin);
+
+        $this->withToken($token)
+            ->getJson('/api/admin/bookings/BK-7777')
+            ->assertStatus(200)
+            ->assertJsonPath('data.id', $legacy->id)
+            ->assertJsonPath('data.ref', '#BK-7777');
+
+        $this->withToken($token)
+            ->getJson('/api/admin/bookings/BK-' . $missing->id)
+            ->assertStatus(200)
+            ->assertJsonPath('data.id', $missing->id)
+            ->assertJsonPath('data.ref', 'BK-' . $missing->id);
     }
 
     public function test_accept_offer_rejects_an_already_rejected_offer(): void

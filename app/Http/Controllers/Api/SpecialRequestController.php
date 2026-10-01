@@ -306,6 +306,11 @@ class SpecialRequestController extends Controller
                 'notes' => $offer->notes,
             ]);
 
+            // The admin panel addresses a booking by ref, and GET
+            // /api/admin/bookings/{ref} looks the column up directly. Without
+            // this every booking in the system is unopenable from the panel.
+            $booking->update(['ref' => Booking::generateRef($booking->id)]);
+
             $offer->update(['status' => 'accepted']);
 
             // Only one proposal can win; the rest are closed out.

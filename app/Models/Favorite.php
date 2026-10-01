@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 class Favorite extends Pivot
 {
     protected $table = 'favorites';
-    public $incrementing = false;
+    public $incrementing = true;
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

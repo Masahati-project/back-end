@@ -129,13 +129,36 @@ class CustomerDashboardController extends Controller
             'space_id' => 'required|exists:workspaces,id'
         ]);
 
-        $result = $request->user()->favoriteWorkspaces()->toggle($request->space_id);
+        $userId = $request->user()->id;
+        $spaceId = $request->space_id;
 
-        $isFavorited = count($result['attached']) > 0;
+        // Scoped to the authenticated user, so another user's favorite of the
+        // same space can never flip the reported direction of this toggle.
+        $isFavorited = Favorite::where('user_id', $userId)
+            ->where('workspace_id', $spaceId)
+            ->exists();
+
+        if ($isFavorited) {
+            Favorite::where('user_id', $userId)
+                ->where('workspace_id', $spaceId)
+                ->delete();
+
+            return response()->json([
+                'message' => 'تمت الإزالة من المفضلة',
+                'is_favorited' => false,
+            ], 200);
+        }
+
+        Favorite::create([
+            'user_id' => $userId,
+            'workspace_id' => $spaceId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         return response()->json([
-            'message' => $isFavorited ? 'تمت الإضافة للمفضلة' : 'تمت الإزالة من المفضلة',
-            'is_favorited' => $isFavorited,
-        ], $isFavorited ? 201 : 200);
+            'message' => 'تمت الإضافة للمفضلة',
+            'is_favorited' => true,
+        ], 201);
     }
 }

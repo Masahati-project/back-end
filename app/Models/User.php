@@ -134,7 +134,7 @@ class User extends Authenticatable
 
     public function favoriteWorkspaces(): BelongsToMany
     {
-        return $this->belongsToMany(WorkSpace::class, 'favorites')->using(Favorite::class)->withTimestamps();
+        return $this->belongsToMany(Workspace::class, 'favorites')->withTimestamps();
     }
 
     public function subscriptions(): HasMany
