@@ -229,9 +229,10 @@ class OwnerSpaceController extends Controller
         $this->ensureOwnerRole();
         $space = $this->ensureOwnsWorkspace($id);
 
-        // Check if there are pending/confirmed bookings
+        // Check if there are pending/confirmed bookings. bookings() is a
+        // HasManyThrough joining units, so status must be qualified.
         $activeBookings = $space->bookings()
-            ->whereIn('status', ['pending', 'confirmed', 'accepted'])
+            ->whereIn('bookings.status', ['pending', 'confirmed', 'accepted'])
             ->count();
 
         if ($activeBookings > 0) {

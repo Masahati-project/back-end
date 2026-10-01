@@ -93,18 +93,20 @@ class Workspace extends Model
 
     public function getStats()
     {
+        // bookings() is a HasManyThrough that joins units, and both tables have a
+        // status column, so the name has to be qualified or MySQL rejects it.
         $confirmedBookings = $this->bookings()
-            ->where('status', 'confirmed')
+            ->where('bookings.status', 'confirmed')
             ->whereMonth('bookings.created_at', now()->month)
             ->count();
 
         $revenue = $this->bookings()
-            ->where('status', 'confirmed')
+            ->where('bookings.status', 'confirmed')
             ->whereMonth('bookings.created_at', now()->month)
-            ->sum('total_price');
+            ->sum('bookings.total_price');
 
         $totalBookings = $this->bookings()
-            ->where('status', 'confirmed')
+            ->where('bookings.status', 'confirmed')
             ->count();
 
         $occupancy = $this->units()->count() > 0
