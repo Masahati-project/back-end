@@ -7,7 +7,7 @@ use App\Models\User;
 use App\Services\BrevoMailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Log;
 
 class OtpController extends Controller
 {
@@ -113,7 +113,7 @@ class OtpController extends Controller
                 ]);
             }
         } catch (\Throwable $th) {
-            \Log::error('User creation failed during OTP verification', [
+            Log::error('User creation failed during OTP verification', [
                 'error' => $th->getMessage(),
                 'trace' => $th->getTraceAsString()
             ]);
