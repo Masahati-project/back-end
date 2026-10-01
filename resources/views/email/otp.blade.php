@@ -18,8 +18,7 @@
                     <!-- الهيدر البرتقالي -->
                     <tr>
                         <td style="background-color:#E07B24;padding:36px 20px;text-align:center;">
-                            <table role="presentation" align="center" cellpadding="0" cellspacing="0"
-                                style="background-color:#ffffff;border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,0.1);">
+                            <table role="presentation" align="center" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td style="padding:12px 26px;">
                                         <img src="{{ asset('images/masahati-logo-white.png') }}"
