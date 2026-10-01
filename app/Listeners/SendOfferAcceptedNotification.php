@@ -29,7 +29,8 @@ class SendOfferAcceptedNotification
         NotificationService::createForOffer(
             $workspace?->owner_id ?? $event->specialRequest->user_id,
             'accepted',
-            $workspace?->title ?? 'المساحة'
+            // The copy names the request the offer was made against, not the space.
+            $event->specialRequest->title ?? 'المساحة'
         );
     }
 }

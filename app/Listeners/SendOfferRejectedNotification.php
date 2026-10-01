@@ -27,7 +27,7 @@ class SendOfferRejectedNotification
         NotificationService::createForOffer(
             $workspace?->owner_id ?? $event->specialRequest->user_id,
             'rejected',
-            $workspace?->title ?? 'المساحة'
+            $event->specialRequest->title ?? 'المساحة'
         );
     }
 }

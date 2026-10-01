@@ -26,22 +26,30 @@ class NotificationService
 
     public static function createForSpecialRequest(int $userId, string $action, string $requestTitle): Notification
     {
-        $message = [
-            'created' => "تم إنشاء طلب خاص جديد: {$requestTitle}",
-            'accepted' => "تم قبول طلبك الخاص: {$requestTitle}",
-            'rejected' => "تم رفض طلبك الخاص: {$requestTitle}",
-            'closed' => "تم إغلاق طلبك الخاص: {$requestTitle}",
+        // Types match the names the frontend filters on.
+        $map = [
+            'created'  => ['special_request_new',    "طلب جديد في السوق: «{$requestTitle}» — قدّم عرضك."],
+            'accepted' => ['special_request_accepted', "تم قبول طلبك الخاص: {$requestTitle}"],
+            'rejected' => ['special_request_closed',  "تم رفض طلبك الخاص: {$requestTitle}"],
+            'closed'   => ['special_request_closed',  "تم إغلاق طلبك الخاص: {$requestTitle}"],
         ];
-        return self::create($userId, 'special_request', $message[$action] ?? 'تحديث طلب خاص');
+
+        [$type, $text] = $map[$action] ?? ['special_request', 'تحديث طلب خاص'];
+
+        return self::create($userId, $type, $text);
     }
 
     public static function createForOffer(int $userId, string $action, string $workspaceName): Notification
     {
-        $message = [
-            'received' => "تلقيت عرض جديد من {$workspaceName}",
-            'accepted' => "تم قبول عرضك من {$workspaceName}",
-            'rejected' => "تم رفض عرضك من {$workspaceName}",
+        $map = [
+            'received' => ['special_request_offer',         "عرض جديد على طلبك «{$workspaceName}»"],
+            'accepted' => ['special_request_offer_accepted', "تم قبول عرضك على «{$workspaceName}»"],
+            'rejected' => ['special_request_offer_rejected', "تم رفض عرضك على «{$workspaceName}»"],
+            'closed'   => ['special_request_offer_closed',   "أُغلق الطلب «{$workspaceName}» دون الرد على عرضك"],
         ];
-        return self::create($userId, 'offer', $message[$action] ?? 'تحديث عرض');
+
+        [$type, $text] = $map[$action] ?? ['special_request_offer', 'تحديث عرض'];
+
+        return self::create($userId, $type, $text);
     }
 }

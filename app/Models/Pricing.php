@@ -7,6 +7,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Pricing extends Model
 {
+    /**
+     * The table is the singular "pricing", not the Eloquent default "pricings".
+     *
+     * @var string
+     */
+    protected $table = 'pricing';
+
     public $timestamps = false;
 
     protected $fillable = [

@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Booking;
 use App\Models\Document;
 use App\Models\DocumentFile;
 use App\Models\Notification;
 use App\Models\Offer;
 use App\Models\SpecialRequest;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,7 +35,7 @@ class SpecialRequestTest extends TestCase
 
     private function workspaceFor(User $owner): Workspace
     {
-        return Workspace::create([
+        $workspace = Workspace::create([
             'owner_id' => $owner->id,
             'title' => 'مساحة الاختبار',
             'space_document_url' => 'documents/space.pdf',
@@ -46,6 +48,19 @@ class SpecialRequestTest extends TestCase
             'close_time' => '22:00',
             'is_closed' => false,
         ]);
+
+        // Accepting an offer books the workspace's first unit, so every test
+        // workspace needs one.
+        Unit::create([
+            'workspace_id' => $workspace->id,
+            'type' => 'desk',
+            'capacity' => '4',
+            'has_wifi' => true,
+            'has_power' => true,
+            'status' => 'available',
+        ]);
+
+        return $workspace;
     }
 
     private function requestFrom(User $customer, array $overrides = []): SpecialRequest
@@ -166,39 +181,39 @@ class SpecialRequestTest extends TestCase
 
         $this->assertDatabaseHas('notifications', [
             'user_id' => $customer->id,
-            'type' => 'offer',
+            'type' => 'special_request_offer',
         ]);
     }
 
-    public function test_resubmitting_from_the_same_space_revises_the_offer(): void
+    public function test_same_owner_cannot_offer_twice_on_the_same_request(): void
     {
         $owner = $this->owner();
         $specialRequest = $this->requestFrom($this->customer());
         $workspace = $this->workspaceFor($owner);
 
-        $payload = [
-            'space_id' => $workspace->id,
-            'price_per_hour' => 50,
-            'duration_hours' => 3,
-        ];
-
         $this->withToken($this->token($owner))
-            ->postJson("/api/special-requests/{$specialRequest->id}/offers", $payload)
+            ->postJson("/api/special-requests/{$specialRequest->id}/offers", [
+                'space_id' => $workspace->id,
+                'price_per_hour' => 50,
+                'duration_hours' => 3,
+            ])
             ->assertStatus(201);
 
+        // The frontend hides the button after the first attempt; the backend
+        // rule is the source of truth.
         $this->withToken($this->token($owner))
             ->postJson("/api/special-requests/{$specialRequest->id}/offers", [
                 'space_id' => $workspace->id,
                 'price_per_hour' => 75,
                 'duration_hours' => 4,
             ])
-            ->assertStatus(201);
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'سبق أن قدّمت عرضاً لهذا الطلب.');
 
         $this->assertDatabaseCount('offers', 1);
         $this->assertDatabaseHas('offers', [
             'special_request_id' => $specialRequest->id,
-            'price_per_hour' => 75,
-            'duration_hours' => 4,
+            'price_per_hour' => 50,
         ]);
     }
 
@@ -359,10 +374,12 @@ class SpecialRequestTest extends TestCase
             ->assertStatus(200);
 
         $this->assertTrue(
-            Notification::where('user_id', $owner->id)->where('type', 'offer')->exists()
+            Notification::where('user_id', $owner->id)
+                ->where('type', 'special_request_offer_accepted')->exists()
         );
         $this->assertFalse(
-            Notification::where('user_id', $customer->id)->where('type', 'offer')->exists()
+            Notification::where('user_id', $customer->id)
+                ->where('type', 'special_request_offer_accepted')->exists()
         );
     }
 
@@ -561,5 +578,250 @@ class SpecialRequestTest extends TestCase
 
         $this->assertSame('الصورة غير واضحة', $payload['review_note']);
         $this->assertNull($payload['admin_note']);
+    }
+
+    // -------------------------------------------------------------------------
+    // SPECIAL REQUESTS — contract from SPECIAL_REQUESTS_API_REQUIREMENTS.md
+    // -------------------------------------------------------------------------
+
+    public function test_accept_offer_creates_a_booking_and_returns_it(): void
+    {
+        // The frontend reads a top-level `booking` key; without it the booking
+        // never shows up in the customer's list.
+        $customer = $this->customer();
+        $owner = $this->owner();
+        $specialRequest = $this->requestFrom($customer);
+        $workspace = $this->workspaceFor($owner);
+
+        $offer = Offer::create([
+            'special_request_id' => $specialRequest->id,
+            'workspace_id' => $workspace->id,
+            'price_per_hour' => 150,
+            'duration_hours' => 3,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->withToken($this->token($customer))
+            ->postJson("/api/special-requests/{$specialRequest->id}/offers/{$offer->id}/accept");
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'message',
+                'booking' => ['booking_id', 'space_name', 'date', 'time', 'hours', 'price', 'status'],
+                'request' => ['request_id', 'status'],
+            ]);
+
+        $this->assertDatabaseHas('bookings', [
+            'user_id' => $customer->id,
+            'unit_id' => $workspace->units()->first()->id,
+            'status' => 'pending',
+            'total_price' => 450,
+        ]);
+    }
+
+    public function test_accept_offer_rejects_an_already_rejected_offer(): void
+    {
+        $customer = $this->customer();
+        $specialRequest = $this->requestFrom($customer);
+        $workspace = $this->workspaceFor($this->owner());
+
+        $offer = Offer::create([
+            'special_request_id' => $specialRequest->id,
+            'workspace_id' => $workspace->id,
+            'price_per_hour' => 50,
+            'duration_hours' => 1,
+            'status' => 'rejected',
+        ]);
+
+        $this->withToken($this->token($customer))
+            ->postJson("/api/special-requests/{$specialRequest->id}/offers/{$offer->id}/accept")
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'العرض غير متاح.');
+    }
+
+    public function test_close_request_closes_pending_offers(): void
+    {
+        $customer = $this->customer();
+        $specialRequest = $this->requestFrom($customer);
+        $workspace = $this->workspaceFor($this->owner());
+
+        $offer = Offer::create([
+            'special_request_id' => $specialRequest->id,
+            'workspace_id' => $workspace->id,
+            'price_per_hour' => 50,
+            'duration_hours' => 1,
+            'status' => 'pending',
+        ]);
+
+        $this->withToken($this->token($customer))
+            ->postJson("/api/special-requests/{$specialRequest->id}/close")
+            ->assertStatus(200)
+            ->assertJsonPath('request.status', 'closed');
+
+        $this->assertDatabaseHas('offers', ['id' => $offer->id, 'status' => 'closed']);
+    }
+
+    public function test_list_returns_the_frontend_shape(): void
+    {
+        $customer = $this->customer();
+        $specialRequest = $this->requestFrom($customer, [
+            'schedule_preset' => 'weekly',
+            'schedule_count' => 8,
+            'amenities' => ['internet', 'projector'],
+        ]);
+        $this->workspaceFor($this->owner());
+
+        $response = $this->withToken($this->token($customer))
+            ->getJson('/api/special-requests');
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'data' => ['requests'],
+                'pagination' => ['current_page', 'last_page', 'total'],
+            ])
+            ->assertJsonPath('data.requests.0.request_id', $specialRequest->id)
+            ->assertJsonPath('data.requests.0.offers_count', 0)
+            ->assertJsonPath('data.requests.0.schedule_label', 'أسبوعي × 8');
+    }
+
+    public function test_show_returns_the_offers_array(): void
+    {
+        // Without a populated offers array the customer sees an empty list with
+        // no error to explain it.
+        $customer = $this->customer();
+        $specialRequest = $this->requestFrom($customer);
+        $workspace = $this->workspaceFor($this->owner());
+
+        Offer::create([
+            'special_request_id' => $specialRequest->id,
+            'workspace_id' => $workspace->id,
+            'price_per_hour' => 150,
+            'duration_hours' => 3,
+            'currency' => 'ش.ج',
+            'notes' => 'مجهزة بشاشة عرض',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->withToken($this->token($customer))
+            ->getJson("/api/special-requests/{$specialRequest->id}");
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'offers')
+            ->assertJsonPath('offers.0.space_name', 'مساحة الاختبار')
+            ->assertJsonPath('offers.0.price_per_hour', 150)
+            ->assertJsonPath('offers.0.currency', 'ش.ج')
+            ->assertJsonPath('offers.0.status', 'pending');
+    }
+
+    public function test_store_offer_returns_the_formatted_offer(): void
+    {
+        $owner = $this->owner();
+        $specialRequest = $this->requestFrom($this->customer());
+        $workspace = $this->workspaceFor($owner);
+
+        $this->withToken($this->token($owner))
+            ->postJson("/api/special-requests/{$specialRequest->id}/offers", [
+                'space_id' => $workspace->id,
+                'price_per_hour' => 150,
+                'duration_hours' => 3,
+                'notes' => 'شاشة عرض 120 بوصة',
+                'currency' => 'ش.ج',
+            ])
+            ->assertStatus(201)
+            ->assertJsonPath('offer.space_name', 'مساحة الاختبار')
+            ->assertJsonPath('offer.price_per_hour', 150)
+            ->assertJsonPath('offer.status', 'pending')
+            ->assertJsonPath('offer.location', 'الرياض');
+    }
+
+    public function test_open_feed_excludes_expired_requests(): void
+    {
+        $owner = $this->owner();
+        $this->requestFrom($this->customer());
+        $this->requestFrom($this->customer(), [
+            'expires_at' => now()->subDay(),
+        ]);
+
+        $this->withToken($this->token($owner))
+            ->getJson('/api/special-requests/open')
+            ->assertStatus(200)
+            ->assertJsonCount(1, 'data.requests');
+    }
+
+    public function test_store_requires_schedule_count_for_recurring_presets(): void
+    {
+        $customer = $this->customer();
+
+        $this->withToken($this->token($customer))
+            ->postJson('/api/special-requests', [
+                'title' => 'طلب',
+                'description' => 'وصف',
+                'space_type' => 'room',
+                'capacity' => 5,
+                'schedule_preset' => 'weekly',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('schedule_count');
+    }
+
+    public function test_store_accepts_a_human_readable_preferred_time(): void
+    {
+        // The docs show "10:00 ص – 1:00 م", which a date_format:H:i rule rejects.
+        $response = $this->withToken($this->token($this->customer()))
+            ->postJson('/api/special-requests', [
+                'title' => 'قاعة محاضرات',
+                'description' => 'أبحث عن قاعة تتسع لـ 40 متدرباً',
+                'space_type' => 'whole',
+                'capacity' => 40,
+                'schedule_preset' => 'weekly',
+                'schedule_count' => 8,
+                'preferred_time' => '10:00 ص – 1:00 م',
+                'area' => 'وسط المدينة',
+                'amenities' => ['internet', 'projector', 'ac'],
+                'budget' => 180,
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonStructure(['message', 'request' => ['request_id', 'status', 'offers_count']]);
+    }
+
+    public function test_notifications_expose_text_and_read(): void
+    {
+        $customer = $this->customer();
+        Notification::create([
+            'user_id' => $customer->id,
+            'type' => 'special_request_offer',
+            'message' => 'عرض جديد على طلبك',
+            'is_read' => false,
+        ]);
+
+        $this->withToken($this->token($customer))
+            ->getJson('/api/notifications')
+            ->assertStatus(200)
+            ->assertJsonPath('data.notifications.0.text', 'عرض جديد على طلبك')
+            ->assertJsonPath('data.notifications.0.read', false);
+    }
+
+    public function test_owner_offers_list_uses_the_frontend_shape(): void
+    {
+        $owner = $this->owner();
+        $customer = $this->customer();
+        $specialRequest = $this->requestFrom($customer, ['title' => 'قاعة محاضرات']);
+        $workspace = $this->workspaceFor($owner);
+
+        Offer::create([
+            'special_request_id' => $specialRequest->id,
+            'workspace_id' => $workspace->id,
+            'price_per_hour' => 150,
+            'duration_hours' => 3,
+            'status' => 'pending',
+        ]);
+
+        $this->withToken($this->token($owner))
+            ->getJson('/api/owner/offers')
+            ->assertStatus(200)
+            ->assertJsonPath('data.0.request_id', $specialRequest->id)
+            ->assertJsonPath('data.0.request_title', 'قاعة محاضرات')
+            ->assertJsonPath('data.0.status', 'pending');
     }
 }

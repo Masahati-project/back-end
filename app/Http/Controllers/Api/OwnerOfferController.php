@@ -17,7 +17,8 @@ class OwnerOfferController extends Controller
     {
         $this->ensureOwnerRole();
 
-        $offers = Offer::where('workspace_id', '!=', null)
+        $offers = Offer::with('specialRequest')
+            ->where('workspace_id', '!=', null)
             ->whereHas('workspace', function ($q) {
                 $q->where('owner_id', Auth::id());
             })
@@ -25,25 +26,32 @@ class OwnerOfferController extends Controller
             ->get()
             ->map(fn ($offer) => $this->formatOfferResponse($offer));
 
-        return response()->json(['offers' => $offers]);
+        return response()->json([
+            'data' => $offers,
+            'offers' => $offers,
+        ]);
     }
 
     private function formatOfferResponse(Offer $offer)
     {
+        $requestTitle = $offer->specialRequest?->title ?? '';
+        // decimal:2 serialises as a string, so cast back for the UI.
+        $price = $offer->price_per_hour !== null ? (float) $offer->price_per_hour : null;
+
         return [
             'id' => $offer->id,
             'offer_id' => $offer->id,
             'requestId' => $offer->special_request_id,
             'request_id' => $offer->special_request_id,
-            'requestTitle' => $offer->specialRequest?->title ?? '',
-            'request_title' => $offer->specialRequest?->title ?? '',
-            'title' => $offer->specialRequest?->title ?? '',
+            'requestTitle' => $requestTitle,
+            'request_title' => $requestTitle,
+            'title' => $requestTitle,
             'status' => $offer->status,
-            'price_per_hour' => $offer->price_per_hour,
-            'price' => $offer->price_per_hour,
+            'price_per_hour' => $price,
+            'price' => $price,
             'currency' => $offer->currency ?? 'ش.ج',
-            'duration_hours' => $offer->duration_hours,
-            'hours' => $offer->duration_hours,
+            'duration_hours' => (int) $offer->duration_hours,
+            'hours' => (int) $offer->duration_hours,
             'created_at' => $offer->created_at?->toIso8601String(),
             'created' => $offer->created_at?->toIso8601String(),
         ];
