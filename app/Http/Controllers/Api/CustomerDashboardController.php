@@ -1,0 +1,164 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Booking;
+use App\Models\Favorite;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
+
+class CustomerDashboardController extends Controller
+{
+    public function stats(Request $request)
+    {
+        $userId = Auth::id();
+        $now = Carbon::now();
+
+        $upcomingBookingsCount = Booking::where('user_id', $userId)
+            ->where('start_datetime', '>', $now)
+            ->where('status', 'confirmed')
+            ->count();
+
+        $totalAttendedHours = Booking::where('user_id', $userId)
+            ->where('status', 'completed')
+            ->get()
+            ->sum(function ($booking) {
+                return Carbon::parse($booking->start_datetime)
+                    ->diffInMinutes(Carbon::parse($booking->end_datetime)) / 60;
+            });
+
+        $favoriteSpacesCount = Favorite::where('user_id', $userId)->count();
+
+        $bookedHoursThisMonth = Booking::where('user_id', $userId)
+            ->whereMonth('start_datetime', $now->month)
+            ->whereYear('start_datetime', $now->year)
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->get()
+            ->sum(function ($booking) {
+                return Carbon::parse($booking->start_datetime)
+                    ->diffInMinutes(Carbon::parse($booking->end_datetime)) / 60;
+            });
+
+        return response()->json([
+            'upcoming_bookings_count' => $upcomingBookingsCount,
+            'total_hours' => round($totalAttendedHours, 1),
+            'favorite_spaces_count' => $favoriteSpacesCount,
+            'booked_hours_this_month' => round($bookedHoursThisMonth, 1),
+        ], 200);
+    }
+
+    public function upcomingBooking(Request $request)
+    {
+        $bookings = Booking::with(['unit.workspace.images', 'unit.pricing'])
+            ->where('user_id', Auth::id())
+            ->where('start_datetime', '>', now())
+            ->where('status', 'confirmed')
+            ->orderBy('start_datetime')
+            ->get()
+            ->map(function ($booking) {
+                $hours = $booking->start_datetime->diffInMinutes($booking->end_datetime) / 60;
+                return [
+                    'booking_id' => $booking->id,
+                    'title' => $booking->unit->workspace->title,
+                    'image' => $booking->unit->workspace->images->first()?->image_url,
+                    'date' => $booking->start_datetime->format('Y-m-d'),
+                    'time' => $booking->start_datetime->format('H:i'),
+                    'hours' => round($hours, 2),
+                    'price' => $booking->unit->pricing->first()?->price,
+                    'status' => $booking->status
+                ];
+            });
+
+        return response()->json(['data' => $bookings], 200);
+    }
+
+    public function bookings(Request $request)
+    {
+        $bookings = Booking::with(['unit.workspace.images'])
+            ->where('user_id', Auth::id())
+            ->orderBy('start_datetime')
+            ->get()
+            ->map(function ($booking) {
+                return [
+                    'booking_id' => $booking->id,
+                    'space_name' => $booking->unit->workspace->title,
+                    'image' => $booking->unit->workspace->images->first()?->image_url,
+                    'date' => $booking->start_datetime->format('Y-m-d'),
+                    'time_from' => $booking->start_datetime->format('H:i'),
+                    'time_to' => $booking->end_datetime->format('H:i'),
+                    'status' => $booking->status
+                ];
+            });
+
+        return response()->json(['data' => $bookings], 200);
+    }
+
+    public function favoriteSpaces(Request $request)
+    {
+        $favorites = Favorite::where('user_id', Auth::id())
+            ->with([
+                'workspace' => function ($q) {
+                    $q->withAvg('reviews', 'rating')
+                        ->with(['images', 'units.pricing', 'amenities']);
+                },
+            ])
+            ->orderBy('created_at')->get()
+            ->map(function ($favorite) {
+                $workspace = $favorite->workspace;
+                $amenityNames = $workspace->amenities->pluck('name')->toArray();
+                return [
+                    'space_id' => $workspace->id,
+                    'title' => $workspace->title,
+                    'image' => $workspace->images->first()?->image_url,
+                    'rating' => round($workspace->reviews_avg_rating ?? 0, 1),
+                    'location' => $workspace->location,
+                    'price' => $workspace->units->first()?->pricing->first()?->price,
+                    'power' => in_array('power', $amenityNames),
+                    'wifi' => in_array('wifi', $amenityNames)
+                ];
+            });
+
+        return response()->json(['data' => $favorites], 200);
+    }
+
+    public function toggle(Request $request)
+    {
+        $request->validate([
+            'space_id' => 'required|exists:workspaces,id'
+        ]);
+
+        $userId = $request->user()->id;
+        $spaceId = $request->space_id;
+
+        // Scoped to the authenticated user, so another user's favorite of the
+        // same space can never flip the reported direction of this toggle.
+        $isFavorited = Favorite::where('user_id', $userId)
+            ->where('workspace_id', $spaceId)
+            ->exists();
+
+        if ($isFavorited) {
+            Favorite::where('user_id', $userId)
+                ->where('workspace_id', $spaceId)
+                ->delete();
+
+            return response()->json([
+                'message' => 'تمت الإزالة من المفضلة',
+                'is_favorited' => false,
+            ], 200);
+        }
+
+        Favorite::create([
+            'user_id' => $userId,
+            'workspace_id' => $spaceId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'تمت الإضافة للمفضلة',
+            'is_favorited' => true,
+        ], 201);
+    }
+}

@@ -1,0 +1,28 @@
+FROM php:8.5-fpm
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip
+
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+
+# Get latest Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www
+
+COPY . .
+
+RUN composer install --no-dev --optimize-autoloader
+
+# Only the last CMD takes effect in Docker. The migration and the cache clear
+# must be chained here, otherwise the database is never migrated on deploy.
+CMD sh -c "php artisan config:clear && php artisan cache:clear && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT"
+
