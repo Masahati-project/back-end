@@ -1,19 +1,13 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-<<<<<<< HEAD
 use App\Http\Controllers\Api\BookingController;
-=======
->>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 use App\Http\Controllers\Api\CustomerDashboardController;
 use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\OtpController;
 use App\Http\Controllers\Api\PasswordController;
 use App\Http\Controllers\Api\ProfileController;
-<<<<<<< HEAD
 use App\Http\Controllers\Api\PublicAdController;
-=======
->>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 use App\Http\Controllers\Api\SpacesController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\SpecialRequestController;
@@ -50,7 +44,6 @@ Route::middleware('guest:sanctum')->group(function () {
         ->middleware('throttle:5,1')
         ->name('password.forgot');
     Route::post('/reset-password', [PasswordController::class, 'resetPassword'])
-<<<<<<< HEAD
         ->middleware('throttle-verified:reset-password')
         ->name('password.reset');
     Route::post('/verify-otp', [OtpController::class, 'verifyOtp'])
@@ -58,15 +51,6 @@ Route::middleware('guest:sanctum')->group(function () {
         ->name('otp.verify');
     Route::post('/resend-otp', [OtpController::class, 'resendOtp'])
         ->middleware('throttle-verified:resend-otp')
-=======
-        ->middleware('throttle:5,1')
-        ->name('password.reset');
-    Route::post('/verify-otp', [OtpController::class, 'verifyOtp'])
-        ->middleware('throttle:5,1')
-        ->name('otp.verify');
-    Route::post('/resend-otp', [OtpController::class, 'resendOtp'])
-        ->middleware('throttle:3,1')
->>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
         ->name('otp.resend');
     Route::post('/auth/google', [GoogleAuthController::class, 'loginWithGoogle'])
         ->middleware('throttle:5,1');
@@ -75,7 +59,6 @@ Route::middleware('guest:sanctum')->group(function () {
     Route::post('/admin/login', [AdminAuthController::class, 'login'])->middleware('throttle:5,1');
 });
 
-<<<<<<< HEAD
 Route::middleware('guest:sanctum')->group(function () {
     // Public spaces catalogue. Declared OUTSIDE the auth:sanctum group on purpose:
     // these are the endpoints an anonymous visitor hits before signing up, so they
@@ -87,9 +70,6 @@ Route::middleware('guest:sanctum')->group(function () {
         ->whereNumber('id')
         ->name('spaces.public.show');
 });
-
-=======
->>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [ProfileController::class, 'profile'])->name('profile');
@@ -136,7 +116,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::match(['post', 'patch'], '/notifications/read', [NotificationController::class, 'markAllAsRead'])
         ->name('notifications.mark-all-as-read');
 
-<<<<<<< HEAD
     // Customer Bookings Routes
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
     // PATCH, not DELETE: the agreed single cancel route, so a cancellation
@@ -149,14 +128,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Public Ads Feed — accessible to customer and space_owner roles
     Route::get('/ads/open', [PublicAdController::class, 'open'])->name('ads.open');
 
-=======
->>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     // Owner Routes (Space Owner Dashboard)
     Route::middleware('auth:sanctum')->prefix('owner')->group(function () {
         // Spaces
         Route::get('/spaces', [OwnerSpaceController::class, 'index'])->name('owner.spaces.index');
         Route::post('/spaces', [OwnerSpaceController::class, 'store'])->name('owner.spaces.store');
-<<<<<<< HEAD
         // Literal routes MUST come before parameterised routes they shadow.
         // whereNumber() on the params below makes shadowing structurally impossible
         // regardless of declaration order.
@@ -177,15 +153,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/bookings/{booking}/status', [OwnerBookingController::class, 'updateStatus'])
             ->whereNumber('booking')
             ->name('owner.bookings.update-status');
-=======
-        Route::put('/spaces/{space}', [OwnerSpaceController::class, 'update'])->name('owner.spaces.update');
-        Route::patch('/spaces/{space}/active', [OwnerSpaceController::class, 'toggleActive'])->name('owner.spaces.toggle-active');
-        Route::delete('/spaces/{space}', [OwnerSpaceController::class, 'destroy'])->name('owner.spaces.destroy');
-
-        // Bookings
-        Route::get('/bookings', [OwnerBookingController::class, 'index'])->name('owner.bookings.index');
-        Route::patch('/bookings/{booking}/status', [OwnerBookingController::class, 'updateStatus'])->name('owner.bookings.update-status');
->>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 
         // Offers
         Route::get('/offers', [OwnerOfferController::class, 'index'])->name('owner.offers.index');
@@ -200,7 +167,6 @@ Route::middleware('auth:sanctum')->group(function () {
         // Ads
         Route::get('/ads', [OwnerAdController::class, 'index'])->name('owner.ads.index');
         Route::post('/ads', [OwnerAdController::class, 'store'])->name('owner.ads.store');
-<<<<<<< HEAD
         // Literal routes before parameterised ones; whereNumber guards on params.
         Route::get('/ads/open', [OwnerAdController::class, 'open'])->name('owner.ads.open');
         Route::get('/ads/published', [OwnerAdController::class, 'published'])->name('owner.ads.published');
@@ -214,11 +180,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/ads/{ad}/publish', [OwnerAdController::class, 'publish'])
             ->whereNumber('ad')
             ->name('owner.ads.publish');
-=======
-        Route::put('/ads/{ad}', [OwnerAdController::class, 'update'])->name('owner.ads.update');
-        Route::delete('/ads/{ad}', [OwnerAdController::class, 'destroy'])->name('owner.ads.destroy');
-        Route::post('/ads/{ad}/publish', [OwnerAdController::class, 'publish'])->name('owner.ads.publish');
->>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     });
 
     // Admin Routes
@@ -227,10 +188,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AdminAuthController::class, 'me']);
         Route::patch('/profile', [AdminAuthController::class, 'updateProfile']);
         Route::put('/password', [AdminAuthController::class, 'changePassword']);
-<<<<<<< HEAD
         Route::post('/profile/picture', [AdminAuthController::class, 'updateProfilePicture']);
-=======
->>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 
         Route::get('/settings', [AdminSettingsController::class, 'index']);
         Route::put('/settings', [AdminSettingsController::class, 'update']);
@@ -305,4 +263,3 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::post('/assistant/chat', [ChatController::class, 'sendMessage'])
         ->middleware('throttle:10,1');
-

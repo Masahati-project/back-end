@@ -24,7 +24,7 @@
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <env name="DB_DATABASE" value="database.sqlite"/>
         <env name="DB_URL" value=""/>
         <!--
             Override the two lines above to run the suite against MySQL, e.g. on CI:

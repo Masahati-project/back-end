@@ -3,10 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-<<<<<<< HEAD
 use App\Http\Requests\AdminProfilePictureRequest;
-=======
->>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -173,8 +170,6 @@ class AdminAuthController extends Controller
             ]
         ]);
     }
-<<<<<<< HEAD
-
     /**
      * Update admin profile picture
      * POST /api/admin/profile/picture
@@ -183,10 +178,8 @@ class AdminAuthController extends Controller
     {
         $user = $request->user();
 
-        // Delete old picture if exists, using the same helper as customer endpoint
         User::deletePicture($user->profile_picture_url);
 
-        // Store new picture using the same path convention
         $user->profile_picture_url = $request->file('profile_picture')->store('profile-pictures', 'cloudinary');
         $user->save();
 
@@ -201,6 +194,4 @@ class AdminAuthController extends Controller
             ]
         ]);
     }
-=======
->>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 }

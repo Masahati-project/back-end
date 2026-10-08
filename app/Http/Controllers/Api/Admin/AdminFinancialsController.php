@@ -47,11 +47,7 @@ class AdminFinancialsController extends Controller
                 'bookings' => $bookings,
                 'commission' => $commission,
                 'payouts' => $payouts,
-<<<<<<< HEAD
                 'payouts_pending' => 0,
-=======
-                'payouts_pending' => 8240,
->>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
                 'commission_rate' => $commissionRate,
             ]
         ]);
@@ -100,11 +96,7 @@ class AdminFinancialsController extends Controller
                 'totals' => [
                     'revenue' => collect($series)->sum('revenue'),
                     'bookings' => collect($series)->sum('bookings'),
-<<<<<<< HEAD
                     'pending' => 0,
-=======
-                    'pending' => 8240,
->>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
                 ],
             ]
         ]);
@@ -129,11 +121,8 @@ class AdminFinancialsController extends Controller
                 ['label' => 'حجوزات', 'amount' => $revenue, 'key' => 'bookings'],
                 ['label' => "عمولة المنصة ({$settings->commission_rate}%)", 'amount' => $commission, 'key' => 'commission'],
                 ['label' => 'مستحقات الملاك', 'amount' => $payouts, 'key' => 'owner_payouts'],
-<<<<<<< HEAD
+
                 ['label' => 'مدفوعات معلقة', 'amount' => 0, 'key' => 'pending_payouts'],
-=======
-                ['label' => 'مدفوعات معلقة', 'amount' => 8240, 'key' => 'pending_payouts'],
->>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
             ]
         ]);
     }
