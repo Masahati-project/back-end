@@ -3,11 +3,16 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+<<<<<<< HEAD
 use App\Models\Document;
 use App\Models\DocumentFile;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Csv;
+=======
+use App\Models\User;
+use App\Models\Workspace;
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,6 +24,7 @@ class AdminUsersController extends Controller
      */
     public function index(Request $request)
     {
+<<<<<<< HEAD
         $query = $this->applyFilters(User::whereIn('role', ['customer', 'space_owner']), $request);
 
         $perPage = min($request->integer('per_page', 10), 100);
@@ -46,6 +52,11 @@ class AdminUsersController extends Controller
     private function applyFilters($query, Request $request)
     {
         // Search (q) — name/email/phone (phone match ignores formatting)
+=======
+        $query = User::whereIn('role', ['customer', 'space_owner']);
+
+        // Search
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
         if ($request->has('q')) {
             $q = $request->q;
             $query->where(function($q2) use ($q) {
@@ -72,6 +83,7 @@ class AdminUsersController extends Controller
         if ($request->has('joined_to')) {
             $query->whereDate('created_at', '<=', $request->joined_to);
         }
+<<<<<<< HEAD
         if ($request->has('min_bookings')) {
             $min = $request->integer('min_bookings');
             $query->whereHas('bookings', function($q) use ($min) {
@@ -100,6 +112,31 @@ class AdminUsersController extends Controller
         }
 
         return $query;
+=======
+
+        // Sort
+        $sort = $request->get('sort', 'newest');
+        $direction = $request->get('direction', 'desc');
+
+        match($sort) {
+            'name' => $query->orderBy('full_name', $direction),
+            'last_active' => $query->orderBy('updated_at', $direction),
+            default => $query->orderBy('created_at', $direction),
+        };
+
+        $perPage = min($request->integer('per_page', 10), 100);
+        $users = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $users->map(fn($u) => $this->formatUserRow($u))->toArray(),
+            'meta' => [
+                'page' => $users->currentPage(),
+                'per_page' => $users->perPage(),
+                'total' => $users->total(),
+                'last_page' => $users->lastPage(),
+            ]
+        ]);
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     }
 
     /**
@@ -146,10 +183,16 @@ class AdminUsersController extends Controller
                 [
                     'spaces' => $user->workspaces->map(fn($w) => [
                         'id' => $w->id,
+<<<<<<< HEAD
                         'name' => $w->title, // column is `title`, not `name`
                         'status' => $w->is_active ? 'active' : 'pending',
                     ])->toArray(),
                     'documents' => $this->documentsFor($user),
+=======
+                        'name' => $w->name,
+                        'status' => $w->is_active ? 'active' : 'pending',
+                    ])->toArray(),
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
                 ]
             )
         ]);
@@ -158,16 +201,23 @@ class AdminUsersController extends Controller
     /**
      * Update user status
      * PATCH /api/admin/users/{id}/status
+<<<<<<< HEAD
      *
      * Valid status values are the DB enum: pending|active|suspended.
      * The legacy value "review" is NOT a legal DB value and was removed.
+=======
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
      */
     public function updateStatus(Request $request, $id)
     {
         $user = User::findOrFail($id);
 
         $request->validate([
+<<<<<<< HEAD
             'status' => 'required|in:pending,active,suspended',
+=======
+            'status' => 'required|in:active,suspended,review',
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
         ]);
 
         $user->status = $request->status;
@@ -186,6 +236,7 @@ class AdminUsersController extends Controller
     }
 
     /**
+<<<<<<< HEAD
      * Verify or un-verify user
      * PATCH /api/admin/users/{id}/verify
      *
@@ -290,6 +341,34 @@ class AdminUsersController extends Controller
         }
 
         return $documents;
+=======
+     * Verify user
+     * PATCH /api/admin/users/{id}/verify
+     */
+    public function verify($id)
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->verified_at) {
+            return response()->json([
+                'message' => 'User already verified',
+                'errors' => []
+            ], 409);
+        }
+
+        $user->verified_at = now();
+        $user->status = 'active';
+        $user->save();
+
+        return response()->json([
+            'data' => [
+                'id' => $user->id,
+                'verified' => true,
+                'status' => 'active',
+                'message' => 'تم توثيق الحساب.',
+            ]
+        ]);
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     }
 
     /**
@@ -370,9 +449,13 @@ class AdminUsersController extends Controller
 
         $users->each(function($user) use ($request) {
             match($request->action) {
+<<<<<<< HEAD
                 'suspend' => $user->update([
                     'status' => 'suspended',
                 ]) && $user->tokens()->delete(),
+=======
+                'suspend' => $user->update(['status' => 'suspended']),
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
                 'activate' => $user->update(['status' => 'active']),
                 'verify' => $user->update(['verified_at' => now(), 'status' => 'active']),
             };
@@ -389,6 +472,7 @@ class AdminUsersController extends Controller
     /**
      * Export users to CSV
      * GET /api/admin/users/export
+<<<<<<< HEAD
      *
      * Query: every A4.1 filter + optional ids (csv of ids).
      * Response: text/csv; charset=UTF-8, Content-Disposition attachment.
@@ -427,6 +511,45 @@ class AdminUsersController extends Controller
         $header = ['name', 'email', 'phone', 'role', 'status', 'verified', 'bookings', 'joined'];
 
         return Csv::download('users-' . now()->format('Y-m-d') . '.csv', $header, $rows);
+=======
+     */
+    public function export(Request $request)
+    {
+        $query = User::whereIn('role', ['customer', 'space_owner']);
+
+        if ($request->has('q')) {
+            $q = $request->q;
+            $query->where(function($q2) use ($q) {
+                $q2->where('full_name', 'like', "%$q%")
+                   ->orWhere('email', 'like', "%$q%");
+            });
+        }
+
+        $users = $query->get();
+
+        $csv = "\xEF\xBB\xBF";
+        $csv .= "name,email,phone,role,status,verified,bookings,joined\n";
+
+        foreach ($users as $user) {
+            $verified = $user->verified_at ? 1 : 0;
+            $bookings = $user->bookings()->count();
+            $csv .= implode(',', [
+                $user->full_name,
+                $user->email,
+                $user->phone,
+                $user->role,
+                $user->status,
+                $verified,
+                $bookings,
+                $user->created_at->format('Y-m-d'),
+            ]) . "\n";
+        }
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="users-' . now()->format('Y-m-d') . '.csv"',
+        ]);
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     }
 
     private function formatUserRow($user)

@@ -6,15 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Models\Ad;
 use App\Services\ImageService;
 use App\Traits\OwnerAuthorization;
+<<<<<<< HEAD
 use App\Traits\ResolvesAdExpiry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+=======
+use Illuminate\Http\Request;
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 use Illuminate\Support\Facades\Auth;
 
 class OwnerAdController extends Controller
 {
     use OwnerAuthorization;
 
+<<<<<<< HEAD
     // resolveAdExpiry() and adSchedulePayload() decide what "still running" means.
     // The identical decision lives in PublicAdController for the public banner feed,
     // and a second implementation is a guaranteed divergence: the day one learns a
@@ -42,6 +47,8 @@ class OwnerAdController extends Controller
     private const OPEN_LIMIT = 50;
 
     private const PUBLISHED_LIMIT = 200;
+=======
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 
     public function index()
     {
@@ -55,6 +62,7 @@ class OwnerAdController extends Controller
         return response()->json(['ads' => $ads]);
     }
 
+<<<<<<< HEAD
     /**
      * GET /api/owner/ads/open — the owner's campaigns that are running right now.
      *
@@ -223,6 +231,8 @@ class OwnerAdController extends Controller
             ->filter(fn (Ad $ad) => $this->adIsRunning($ad, $now));
     }
 
+=======
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     public function store(Request $request)
     {
         $this->ensureOwnerRole();
@@ -258,6 +268,7 @@ class OwnerAdController extends Controller
         ], 201);
     }
 
+<<<<<<< HEAD
     /**
      * `int $id` rather than `string $id`: the route declares ->whereNumber('ad'), so
      * the segment is digits only, and a PHP type of int makes the same guarantee at
@@ -266,6 +277,9 @@ class OwnerAdController extends Controller
      * non-numeric never gets this far because the route constraint rejects it first.
      */
     public function update(Request $request, int $id)
+=======
+    public function update(Request $request, string $id)
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     {
         $this->ensureOwnerRole();
         $ad = $this->ensureOwnsAd($id);
@@ -306,10 +320,14 @@ class OwnerAdController extends Controller
         ]);
     }
 
+<<<<<<< HEAD
     /**
      * `int $id` for the same reason as update(): ->whereNumber('ad') on the route.
      */
     public function destroy(int $id)
+=======
+    public function destroy(string $id)
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     {
         $this->ensureOwnerRole();
         $ad = $this->ensureOwnsAd($id);
@@ -319,10 +337,14 @@ class OwnerAdController extends Controller
         return response()->json(['message' => 'تم حذف الإعلان.']);
     }
 
+<<<<<<< HEAD
     /**
      * `int $id` for the same reason as update(): ->whereNumber('ad') on the route.
      */
     public function publish(Request $request, int $id)
+=======
+    public function publish(Request $request, string $id)
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     {
         $this->ensureOwnerRole();
         $ad = $this->ensureOwnsAd($id);

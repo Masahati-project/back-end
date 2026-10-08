@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+<<<<<<< HEAD
 use App\Models\Unit;
 use App\Models\Workspace;
 use DateTimeInterface;
@@ -541,3 +542,39 @@ class SpacesController extends Controller
             ->all();
     }
 }
+=======
+use App\Models\Workspace;
+use Illuminate\Http\Request;
+
+class SpacesController extends Controller
+{
+    public function index(Request $request)
+    {
+        $spaces = Workspace::where('status', 'approved')
+            ->with('images')
+            ->withAvg('reviews', 'rating')
+            ->with(['units.pricing'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
+
+        $data = $spaces->getCollection()->map(function ($space) {
+            return [
+                'space_id' => $space->id,
+                'title' => $space->title,
+                'description' => $space->description,
+                'location' => $space->location,
+                'image' => $space->images->first()?->image_url,
+                'rating' => round($space->reviews_avg_rating ?? 0, 1),
+                'price' => $space->units->first()?->pricing->first()?->price,
+            ];
+        });
+
+        return response()->json([
+            'data' => $data,
+            'current_page' => $spaces->currentPage(),
+            'last_page' => $spaces->lastPage(),
+            'has_more' => $spaces->hasMorePages(),
+        ], 200);
+    }
+}
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687

@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+<<<<<<< HEAD
 use App\Http\Requests\AdminProfilePictureRequest;
+=======
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -170,6 +173,7 @@ class AdminAuthController extends Controller
             ]
         ]);
     }
+<<<<<<< HEAD
 
     /**
      * Update admin profile picture
@@ -197,4 +201,6 @@ class AdminAuthController extends Controller
             ]
         ]);
     }
+=======
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 }

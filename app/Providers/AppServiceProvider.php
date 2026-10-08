@@ -5,16 +5,23 @@ namespace App\Providers;
 use App\Events\OfferAccepted;
 use App\Events\OfferRejected;
 use App\Events\SpecialRequestCreated;
+<<<<<<< HEAD
 use App\Http\Middleware\ThrottleVerifiedAttempts;
+=======
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 use App\Listeners\SendOfferAcceptedNotification;
 use App\Listeners\SendOfferRejectedNotification;
 use App\Listeners\SendSpecialRequestNotification;
 use App\Mail\BrevoTransport;
 use Illuminate\Auth\Notifications\ResetPassword;
+<<<<<<< HEAD
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
+=======
+use Illuminate\Support\Facades\Mail;
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -46,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
             '/reset-password?token=' . $token .
             '&email=' . urlencode($user->email);
         });
+<<<<<<< HEAD
 
         $this->registerAuthRateLimiters();
     }
@@ -127,5 +135,7 @@ class AppServiceProvider extends ServiceProvider
                 ThrottleVerifiedAttempts::cacheKey($request, ThrottleVerifiedAttempts::RESET_PASSWORD)
             );
         });
+=======
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     }
 }

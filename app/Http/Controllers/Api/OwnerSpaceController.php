@@ -4,12 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Amenity;
+<<<<<<< HEAD
 use App\Models\Booking;
 use App\Models\Unit;
 use App\Models\Workspace;
 use App\Services\ImageService;
 use App\Traits\OwnerAuthorization;
 use Illuminate\Database\Eloquent\Builder;
+=======
+use App\Models\Workspace;
+use App\Services\ImageService;
+use App\Traits\OwnerAuthorization;
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -17,6 +23,7 @@ class OwnerSpaceController extends Controller
 {
     use OwnerAuthorization;
 
+<<<<<<< HEAD
     /**
      * Hard cap on GET /api/owner/spaces/open.
      *
@@ -37,6 +44,8 @@ class OwnerSpaceController extends Controller
      * this many spaces still reports honest totals.
      */
     private const STATS_SPACES_LIMIT = 50;
+=======
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 
     public function index()
     {
@@ -49,6 +58,7 @@ class OwnerSpaceController extends Controller
         return response()->json(['spaces' => $spaces]);
     }
 
+<<<<<<< HEAD
     /**
      * GET /api/owner/spaces/open — the owner's live listings.
      *
@@ -228,6 +238,8 @@ class OwnerSpaceController extends Controller
         ]);
     }
 
+=======
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     public function store(Request $request)
     {
         $this->ensureOwnerRole();
@@ -315,6 +327,7 @@ class OwnerSpaceController extends Controller
         ], 201);
     }
 
+<<<<<<< HEAD
     /**
      * `int $id` rather than `string $id`: the route declares
      * ->whereNumber('space'), so the segment is digits only, and a PHP type of int
@@ -324,6 +337,9 @@ class OwnerSpaceController extends Controller
      * route constraint rejects it first.
      */
     public function update(Request $request, int $id)
+=======
+    public function update(Request $request, string $id)
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     {
         $this->ensureOwnerRole();
         $space = $this->ensureOwnsWorkspace($id);
@@ -422,10 +438,14 @@ class OwnerSpaceController extends Controller
         ]);
     }
 
+<<<<<<< HEAD
     /**
      * `int $id` for the same reason as update(): ->whereNumber('space') on the route.
      */
     public function toggleActive(Request $request, int $id)
+=======
+    public function toggleActive(Request $request, string $id)
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     {
         $this->ensureOwnerRole();
         $space = $this->ensureOwnsWorkspace($id);
@@ -442,10 +462,14 @@ class OwnerSpaceController extends Controller
         ]);
     }
 
+<<<<<<< HEAD
     /**
      * `int $id` for the same reason as update(): ->whereNumber('space') on the route.
      */
     public function destroy(int $id)
+=======
+    public function destroy(string $id)
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
     {
         $this->ensureOwnerRole();
         $space = $this->ensureOwnsWorkspace($id);
@@ -468,6 +492,7 @@ class OwnerSpaceController extends Controller
     }
 
     /**
+<<<<<<< HEAD
      * Every query in this controller starts here.
      *
      * owner_id = Auth::id() is what makes these endpoints owner's-only: scoping to
@@ -586,6 +611,8 @@ class OwnerSpaceController extends Controller
     }
 
     /**
+=======
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
      * Resolve an amenity by name, creating it when missing.
      *
      * icon is NOT NULL with no default, so it has to be supplied on create.

@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+<<<<<<< HEAD
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
             // Counts an attempt only once the body's identifier field validates,
@@ -34,11 +35,19 @@ return Application::configure(basePath: dirname(__DIR__))
         // callback is the last chance for *any* thrower of
         // ThrottleRequestsException, so it guarantees the header rather than
         // trusting it.
+=======
+        $middleware->alias(['admin' => \App\Http\Middleware\EnsureAdmin::class]);
+    })
+    ->withExceptions(function (Exceptions $exceptions): void {
+        // The frontend has no 429-specific handling, so it was rendering the
+        // generic server-error copy. Retry-After lets it say "try again shortly".
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
         $exceptions->render(function (ThrottleRequestsException $e, $request) {
             if (!$request->expectsJson()) {
                 return null;
             }
 
+<<<<<<< HEAD
             // Forwarded untouched, so X-RateLimit-Limit, X-RateLimit-Remaining,
             // X-RateLimit-Reset and Retry-After all keep working exactly as they
             // do today.
@@ -80,5 +89,10 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->json([
                 'message' => 'عدد المحاولات كبير، يرجى المحاولة بعد قليل',
             ], 429, $headers);
+=======
+            return response()->json([
+                'message' => 'عدد المحاولات كبير، يرجى المحاولة بعد قليل',
+            ], 429, $e->getHeaders());
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
         });
     })->create();

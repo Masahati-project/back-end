@@ -69,12 +69,15 @@ class AdminSpacesController extends Controller
     /**
      * Get spaces stats
      * GET /api/admin/spaces/stats
+<<<<<<< HEAD
      *
      * Counts reconcile with registeredSpaces (§14.3):
      * registeredSpaces = active + pending + suspended
      * - active: is_active = true
      * - pending: status = 'pending'
      * - suspended: status = 'rejected' (UI maps reject→suspended per A5.5)
+=======
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
      */
     public function stats(Request $request)
     {
@@ -89,9 +92,15 @@ class AdminSpacesController extends Controller
         }
 
         $all = $query->count();
+<<<<<<< HEAD
         $active = $query->where('is_active', true)->count();
         $pending = $query->where('status', 'pending')->count();
         $suspended = $query->where('status', 'rejected')->count();
+=======
+        $active = (clone $query)->where('is_active', true)->count();
+        $pending = (clone $query)->where('is_active', false)->count();
+        $suspended = 0;
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 
         return response()->json([
             'data' => [
@@ -154,6 +163,7 @@ class AdminSpacesController extends Controller
         if ($request->has('neighborhood')) {
             $space->location = $request->neighborhood;
         }
+<<<<<<< HEAD
         if ($request->has('price')) {
             // Price is not a direct column on workspaces; it is stored per unit.
             // For now, we record the requested price as a note; the UI should
@@ -166,6 +176,8 @@ class AdminSpacesController extends Controller
             // Similarly, the UI should update the unit's capacity field.
         }
 
+=======
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
         if ($request->has('image') && $request->image) {
             // TODO: handle image update
         }
@@ -254,11 +266,19 @@ class AdminSpacesController extends Controller
                 $space->title,
                 $space->location,
                 $space->owner->full_name,
+<<<<<<< HEAD
                 $this->spacePrice($space),
                 $space->is_active ? 'active' : 'pending',
                 $rating,
                 $space->bookings()->count(),
                 $this->spaceCapacity($space),
+=======
+                15, // TODO: get price
+                $space->is_active ? 'active' : 'pending',
+                $rating,
+                $space->bookings()->count(),
+                24, // TODO: get capacity
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
             ]) . "\n";
         }
 
@@ -268,6 +288,7 @@ class AdminSpacesController extends Controller
         ]);
     }
 
+<<<<<<< HEAD
     /**
      * Format a space row for list endpoints.
      *
@@ -279,21 +300,35 @@ class AdminSpacesController extends Controller
         $rating = round($space->reviews()->avg('rating') ?? 0, 1);
         $price = $this->spacePrice($space);
         $capacity = $this->spaceCapacity($space);
+=======
+    private function formatSpaceRow($space)
+    {
+        $rating = round($space->reviews()->avg('rating') ?? 0, 1);
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 
         return [
             'id' => $space->id,
             'name' => $space->title,
             'neighborhood' => $space->location,
             'owner' => $space->owner->full_name,
+<<<<<<< HEAD
             'price' => $price,
             'status' => $space->is_active ? 'active' : 'pending',
             'rating' => $rating,
             'bookings' => $space->bookings()->count(),
             'capacity' => $capacity,
+=======
+            'price' => 15,
+            'status' => $space->is_active ? 'active' : 'pending',
+            'rating' => $rating,
+            'bookings' => $space->bookings()->count(),
+            'capacity' => 24,
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
             'image' => $space->images()->first()?->image_url,
         ];
     }
 
+<<<<<<< HEAD
     /**
      * Format full space detail response.
      */
@@ -302,22 +337,35 @@ class AdminSpacesController extends Controller
         $price = $this->spacePrice($space);
         $capacity = $this->spaceCapacity($space);
 
+=======
+    private function formatSpaceDetail($space)
+    {
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
         return [
             'id' => $space->id,
             'name' => $space->title,
             'neighborhood' => $space->location,
             'owner' => $space->owner->full_name,
             'owner_id' => $space->owner_id,
+<<<<<<< HEAD
             'price' => $price,
             'status' => $space->is_active ? 'active' : 'pending',
             'rating' => round($space->reviews()->avg('rating') ?? 0, 1),
             'bookings' => $space->bookings()->count(),
             'capacity' => $capacity,
+=======
+            'price' => 15,
+            'status' => $space->is_active ? 'active' : 'pending',
+            'rating' => round($space->reviews()->avg('rating') ?? 0, 1),
+            'bookings' => $space->bookings()->count(),
+            'capacity' => 24,
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
             'image' => $space->images()->first()?->image_url,
             'description' => $space->description,
             'created_at' => $space->created_at->toIso8601String(),
         ];
     }
+<<<<<<< HEAD
 
     /**
      * Get space price from its first unit's pricing, or a sensible fallback.
@@ -348,4 +396,6 @@ class AdminSpacesController extends Controller
         }
         return $unit->capacity;
     }
+=======
+>>>>>>> 70ab341a93cda185b5426b47c12600dcb3d90687
 }
