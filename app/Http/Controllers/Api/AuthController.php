@@ -25,7 +25,7 @@ class AuthController extends Controller
                 'confirmed',
                 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/'
             ],
-            'proof_document' => 'nullable|file',
+            'proof_document' => 'nullable|file|mimes:pdf,png,jpg,jpeg|max:5120',
         ]);
         if ($request->hasFile('proof_document')) {
             $file = $request->file('proof_document');

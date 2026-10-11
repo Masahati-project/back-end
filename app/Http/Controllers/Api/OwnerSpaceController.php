@@ -9,6 +9,7 @@ use App\Models\Unit;
 use App\Models\Workspace;
 use App\Services\ImageService;
 use App\Traits\OwnerAuthorization;
+use App\Traits\OwnerVerification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 class OwnerSpaceController extends Controller
 {
     use OwnerAuthorization;
+    use OwnerVerification;
 
     private const OPEN_SPACES_LIMIT = 100;
     private const STATS_SPACES_LIMIT = 50;
@@ -36,7 +38,7 @@ class OwnerSpaceController extends Controller
         $this->ensureOwnerRole();
 
         $spaces = $this->ownedSpaces()
-            ->where('status', 'approved')
+            ->where('status', 'active')
             ->where('is_active', true)
             ->orderByDesc('created_at')
             ->orderByDesc('id')
@@ -62,14 +64,15 @@ class OwnerSpaceController extends Controller
 
         $byStatus = [
             'pending' => (clone $query)->where('status', 'pending')->count(),
-            'approved' => (clone $query)->where('status', 'approved')->count(),
+            'active' => (clone $query)->where('status', 'active')->count(),
+            'suspended' => (clone $query)->where('status', 'suspended')->count(),
             'rejected' => (clone $query)->where('status', 'rejected')->count(),
         ];
 
         $active = (clone $query)->where('is_active', true)->count();
         $inactive = (clone $query)->where('is_active', false)->count();
 
-        $live = (clone $query)->where('status', 'approved')->where('is_active', true)->count();
+        $live = (clone $query)->where('status', 'active')->where('is_active', true)->count();
 
         $spaces = (clone $query)
             ->orderByDesc('created_at')
@@ -113,9 +116,13 @@ class OwnerSpaceController extends Controller
             'total' => $total,
             'total_spaces' => $total,
             'pending' => $byStatus['pending'],
-            'approved' => $byStatus['approved'],
+            'active' => $byStatus['active'],
+            'suspended' => $byStatus['suspended'],
             'rejected' => $byStatus['rejected'],
-            'active' => $active,
+            // Retained so an owner dashboard build still reading the old spelling
+            // keeps working; both now count the same rows.
+            'approved' => $byStatus['active'],
+            'listed' => $active,
             'inactive' => $inactive,
             'by_status' => $byStatus,
             'by_is_active' => ['active' => $active, 'inactive' => $inactive],
@@ -140,6 +147,11 @@ class OwnerSpaceController extends Controller
     public function store(Request $request)
     {
         $this->ensureOwnerRole();
+
+        // An owner may only list a space once an admin has approved their proof
+        // of ownership. This is the real rule, not a UI hint: the frontend
+        // hiding the button does not stop any other client from calling.
+        $this->ensureOwnerVerifiedToListSpaces();
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',

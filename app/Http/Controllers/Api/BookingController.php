@@ -48,11 +48,12 @@ class BookingController extends Controller
                 'required',
                 'integer',
                 // A customer may only book a space that is actually on sale, so
-                // "approved and active" is part of the rule itself: an unknown id,
-                // a space still pending approval and a deactivated space all fail
-                // here with Laravel's normal per-field validation error.
+                // "active and listed" is part of the rule itself: an unknown id,
+                // a space still pending approval, a suspended or rejected one and
+                // a deactivated space all fail here with Laravel's normal
+                // per-field validation error.
                 Rule::exists('workspaces', 'id')
-                    ->where('status', 'approved')
+                    ->where('status', 'active')
                     ->where('is_active', true),
             ],
             // Today is allowed: a customer may book a slot that starts in an hour.
@@ -90,7 +91,7 @@ class BookingController extends Controller
         // nothing filters soft-deleted rows automatically, and a deleted space
         // would otherwise keep taking bookings.
         $workspace = Workspace::where('id', $validated['space_id'])
-            ->where('status', 'approved')
+            ->where('status', 'active')
             ->where('is_active', true)
             ->whereNull('deleted_at')
             ->first();

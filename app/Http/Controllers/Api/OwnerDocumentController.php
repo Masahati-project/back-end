@@ -94,7 +94,20 @@ class OwnerDocumentController extends Controller
         $document->update([
             'status' => 'pending',
             'submitted_at' => now(),
+            // A prior decision was about the file that was replaced, not this
+            // one, so the review note is cleared rather than left describing a
+            // document the owner no longer has on file.
+            'note' => null,
+            'reviewed_at' => null,
         ]);
+
+        // A re-submission returns the owner to review too. Leaving the user row
+        // at `active` while the document sits in `pending` would make the two
+        // disagree about whether the owner is cleared, and the gate trusts both.
+        $user = Auth::user();
+        if ($user->status === 'active' && $user->role === 'space_owner') {
+            $user->forceFill(['status' => 'pending'])->save();
+        }
 
         return response()->json($this->formatDocumentResponse($document), 201);
     }
@@ -129,10 +142,11 @@ class OwnerDocumentController extends Controller
             // break a client reading files.assets / files.cert.
             'files' => (object) $filesBySlot,
             'note' => $document->note,
-            'review_note' => $document->note,
-            // The documents table has no admin-facing note column, so this stays
-            // null until one exists. It previously mirrored `note`.
-            'admin_note' => null,
+            // The admin writes the decision's reason into the same column the
+            // review screen reads it from, so this is the owner's feedback and
+            // is null until a decision has actually been made.
+            'review_note' => $document->reviewed_at ? $document->note : null,
+            'admin_note' => $document->reviewed_at ? $document->note : null,
             'submitted_at' => $document->submitted_at?->toIso8601String(),
             'submittedAt' => $document->submitted_at?->toIso8601String(),
             'reviewed_at' => $document->reviewed_at?->toIso8601String(),

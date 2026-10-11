@@ -122,7 +122,11 @@ class AdminUsersController extends Controller
                     'spaces' => $user->workspaces->map(fn($w) => [
                         'id' => $w->id,
                         'name' => $w->title,
-                        'status' => $w->is_active ? 'active' : 'pending',
+                        // The lifecycle state, not a guess from the listing
+                        // toggle — deriving it here reported every suspended
+                        // and rejected space as "pending".
+                        'status' => $w->status,
+                        'is_active' => (bool) $w->is_active,
                     ])->toArray(),
                     'documents' => $this->documentsFor($user),
                 ]

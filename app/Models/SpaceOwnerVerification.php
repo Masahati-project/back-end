@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SpaceOwnerVerification extends Model
 {
@@ -15,12 +14,26 @@ class SpaceOwnerVerification extends Model
      */
     protected $table = 'space_owner_verification';
 
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
+    /**
+     * Without this, every mass-assigned attribute is silently dropped: the
+     * framework default guards the model completely, and strict mode is off, so
+     * a create() that wrote nothing still looked like it succeeded.
+     *
+     * @var list<string>
+     */
+    protected $fillable = [
+        'user_id',
+        'workspace_id',
+        'proof_document_url',
+        'status',
+        'verified_at',
+    ];
 
-    public function workspace(): BelongsTo
+    protected $casts = [
+        'verified_at' => 'datetime',
+    ];
+
+    public function workspace()
     {
         return $this->belongsTo(Workspace::class);
     }

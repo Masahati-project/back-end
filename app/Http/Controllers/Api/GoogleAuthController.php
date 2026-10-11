@@ -62,8 +62,18 @@ class GoogleAuthController extends Controller
             ]);
         }
 
-        // مستخدم جديد -> الطالب active فوراً، صاحب المساحة pending
-        $role = $request->role ?? 'customer';
+        // A new account is only created when the caller states which role it wants.
+        // Defaulting to `customer` here registered a stranger as a real customer
+        // the first time they ever signed in with Google, so an unrecognised
+        // Google identity now has to say what it is before it becomes an account.
+        if (blank($request->input('role'))) {
+            return response()->json([
+                'code' => 'NOT_REGISTERED',
+                'message' => 'هذا الحساب غير مسجّل. يرجى إكمال التسجيل.',
+            ], 409);
+        }
+
+        $role = $request->input('role');
         $status = $role === 'customer' ? 'active' : 'pending';
 
         $user = User::create([

@@ -73,7 +73,7 @@ class SpacesController extends Controller
     private function catalogueQuery(): Builder
     {
         return Workspace::query()
-            ->where('workspaces.status', 'approved')
+            ->where('workspaces.status', 'active')
             ->where('workspaces.is_active', true)
             ->whereNull('workspaces.deleted_at')
             ->with([
@@ -161,9 +161,9 @@ class SpacesController extends Controller
         $hourly = $this->hourlyPricing($space);
 
         $isActive = (bool) $space->is_active;
-        $isApproved = $space->status === 'approved';
+        $isLive = $space->status === 'active';
 
-        $instantBooking = $isActive && $isApproved && $availableUnits->isNotEmpty();
+        $instantBooking = $isActive && $isLive && $availableUnits->isNotEmpty();
 
         $gallery = $space->images->pluck('image_url')->values()->toArray();
 

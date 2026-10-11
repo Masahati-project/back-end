@@ -55,7 +55,16 @@ class User extends Authenticatable
     #[Override]
     public function sendPasswordResetNotification($token)
     {
-        $url = url(config('app.frontend_url') . '/reset-password?token=' . $token . '&email=' . urlencode($this->email));
+        // Built from config('app.frontend_url') so the token lands on the page
+        // that renders the form. Pointing this at the API instead yields a link
+        // the browser opens with GET, which the reset route answers with
+        // "method not allowed" — the user never sees the form.
+        //
+        // Not wrapped in url(): that helper rewrites a relative path against
+        // APP_URL, which is exactly the wrong host for this link.
+        $url = config('app.frontend_url')
+            . '/reset-password?token=' . urlencode($token)
+            . '&email=' . urlencode($this->email);
 
         BrevoMailService::sendHtmlMail(
             toEmail : $this->email,

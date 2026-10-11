@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\SpecialRequestController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OwnerSpaceController;
+use App\Http\Controllers\Api\OwnerSpaceDocumentController;
 use App\Http\Controllers\Api\OwnerBookingController;
 use App\Http\Controllers\Api\OwnerOfferController;
 use App\Http\Controllers\Api\OwnerReviewController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\Api\Admin\AdminUsersController;
 use App\Http\Controllers\Api\Admin\AdminSpacesController;
 use App\Http\Controllers\Api\Admin\AdminBookingsController;
 use App\Http\Controllers\Api\Admin\AdminDisputesController;
+use App\Http\Controllers\Api\Admin\AdminOwnerDocumentsController;
 use App\Http\Controllers\Api\Admin\AdminReviewsController;
 use App\Http\Controllers\Api\Admin\AdminFinancialsController;
 use App\Http\Controllers\Api\Admin\AdminInboxController;
@@ -59,17 +61,15 @@ Route::middleware('guest:sanctum')->group(function () {
     Route::post('/admin/login', [AdminAuthController::class, 'login'])->middleware('throttle:5,1');
 });
 
-Route::middleware('guest:sanctum')->group(function () {
-    // Public spaces catalogue. Declared OUTSIDE the auth:sanctum group on purpose:
-    // these are the endpoints an anonymous visitor hits before signing up, so they
-    // must never answer 401. The route names differ from the authenticated
-    // /dashboard/spaces alias (already named "spaces" above) — Laravel throws on a
-    // duplicate route name, so these are namespaced as spaces.public.*.
-    Route::get('/spaces', [SpacesController::class, 'index'])->name('spaces.public.index');
-    Route::get('/spaces/{id}', [SpacesController::class, 'show'])
-        ->whereNumber('id')
-        ->name('spaces.public.show');
-});
+// The public catalogue. Deliberately outside the auth:sanctum group and
+// without guest:sanctum as well: guest:sanctum rejects callers who *do* hold a
+// token, so an authenticated customer browsing spaces was answered 403 while a
+// logged-out visitor was served normally. Browsing the catalogue must not depend
+// on whether you happen to be signed in.
+Route::get('/spaces', [SpacesController::class, 'index'])->name('spaces.public.index');
+Route::get('/spaces/{id}', [SpacesController::class, 'show'])
+    ->whereNumber('id')
+    ->name('spaces.public.show');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [ProfileController::class, 'profile'])->name('profile');
@@ -88,10 +88,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/dashboard/favorites/toggle', [CustomerDashboardController::class, 'toggle'])->name('favorite.toggle');
     Route::get('/dashboard/spaces', [SpacesController::class, 'index'])->name('spaces');
 
-    // Special Requests Routes
-    // The literal /open route must be declared before /{requestId}, otherwise the
-    // {requestId} segment swallows "open". whereNumber() makes that impossible
-    // regardless of declaration order.
     Route::get('/special-requests', [SpecialRequestController::class, 'index'])->name('special-requests.index');
     Route::post('/special-requests', [SpecialRequestController::class, 'store'])->name('special-requests.store');
     Route::get('/special-requests/open', [SpecialRequestController::class, 'open'])->name('special-requests.open');
@@ -164,6 +160,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/documents', [OwnerDocumentController::class, 'index'])->name('owner.documents.index');
         Route::post('/documents', [OwnerDocumentController::class, 'store'])->name('owner.documents.store');
 
+        // A listing's proof file (deed / lease). Separate from the create call
+        // because the owner's form needs the new space id before it can upload.
+        Route::get('/spaces/{space}/documents', [OwnerSpaceDocumentController::class, 'index'])
+            ->whereNumber('space')
+            ->name('owner.spaces.documents.index');
+        Route::post('/spaces/{space}/documents', [OwnerSpaceDocumentController::class, 'store'])
+            ->whereNumber('space')
+            ->name('owner.spaces.documents.store');
+
         // Ads
         Route::get('/ads', [OwnerAdController::class, 'index'])->name('owner.ads.index');
         Route::post('/ads', [OwnerAdController::class, 'store'])->name('owner.ads.store');
@@ -207,6 +212,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/users/{id}/verify', [AdminUsersController::class, 'verify']);
         Route::delete('/users/{id}', [AdminUsersController::class, 'destroy']);
         Route::post('/users/bulk-status', [AdminUsersController::class, 'bulkStatus']);
+
+        // Owner onboarding review. Approving here is what flips a space owner
+        // from `pending` to `active`, which is the only thing that lets them
+        // list a space — see App\Traits\OwnerVerification.
+        Route::get('/documents', [AdminOwnerDocumentsController::class, 'index']);
+        Route::get('/users/{id}/documents', [AdminOwnerDocumentsController::class, 'show'])
+            ->whereNumber('id');
+        Route::patch('/users/{id}/documents/status', [AdminOwnerDocumentsController::class, 'updateStatus'])
+            ->whereNumber('id');
 
         Route::get('/spaces', [AdminSpacesController::class, 'index']);
         Route::get('/spaces/stats', [AdminSpacesController::class, 'stats']);

@@ -78,6 +78,18 @@ class Workspace extends Model
         return $this->hasOne(SpaceOwnerVerification::class);
     }
 
+    /**
+     * Every proof file ever attached to this listing.
+     *
+     * `verification()` is a HasOne, which cannot express a listing that has been
+     * re-documented and therefore has more than one row: without this the admin
+     * screen only ever saw the most recent submission.
+     */
+    public function spaceDocuments(): HasMany
+    {
+        return $this->hasMany(SpaceOwnerVerification::class);
+    }
+
     public function offers(): HasMany
     {
         return $this->hasMany(Offer::class);
