@@ -20,7 +20,7 @@ return [
 
     'allowed_origins' => [
         'https://masahati-five.vercel.app',
-        'https://masahati.apps.taqat.academy'
+        'https://masahati.apps.taqat.academy',
         'http://localhost:3000',
         'http://localhost:5173',
         'http://localhost:8080',
