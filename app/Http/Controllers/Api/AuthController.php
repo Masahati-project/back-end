@@ -121,8 +121,25 @@ class AuthController extends Controller
         
         if (Auth::attempt($credentials)) {
             $user = User::where($loginField, $loginValue)->first();
-
+            
             $user->tokens()->delete();
+            
+            if($user->role == 'admin') {
+                $token = $user->createToken('admin-token', ['admin'])->plainTextToken;
+                return response()->json([
+                    'data' => [
+                    'token' => $token,
+                    'token_type' => 'Bearer',
+                    'expires_at' => now()->addHours(12)->toIso8601String(),
+                    'admin' => [
+                        'id' => $user->id,
+                        'name' => $user->full_name,
+                        'email' => $user->email,
+                        'whatsapp' => $user->phone ?? '+970 59 000 0000',
+                        'role' => 'admin']
+                        ]
+                ]);
+            }
 
             $token = $user->createToken('auth_token')->plainTextToken;
             return response()->json([
