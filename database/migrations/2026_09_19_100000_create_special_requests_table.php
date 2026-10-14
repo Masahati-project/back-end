@@ -12,12 +12,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('title');
-            $table->text('description');
+            $table->text('description')->nullable();
             $table->enum('space_type', ['room', 'whole']);
             $table->integer('capacity');
             $table->string('schedule_preset')->nullable();
             $table->integer('schedule_count')->nullable();
-            $table->time('preferred_time')->nullable();
+            $table->time('preferred_time');
             $table->string('area')->nullable();
             $table->json('amenities')->nullable();
             $table->decimal('budget', 12, 2)->nullable();

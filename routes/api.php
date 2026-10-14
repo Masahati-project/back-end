@@ -61,11 +61,6 @@ Route::middleware('guest:sanctum')->group(function () {
     Route::post('/admin/login', [AdminAuthController::class, 'login'])->middleware('throttle:5,1');
 });
 
-// The public catalogue. Deliberately outside the auth:sanctum group and
-// without guest:sanctum as well: guest:sanctum rejects callers who *do* hold a
-// token, so an authenticated customer browsing spaces was answered 403 while a
-// logged-out visitor was served normally. Browsing the catalogue must not depend
-// on whether you happen to be signed in.
 Route::get('/spaces', [SpacesController::class, 'index'])->name('spaces.public.index');
 Route::get('/spaces/{id}', [SpacesController::class, 'show'])
     ->whereNumber('id')
