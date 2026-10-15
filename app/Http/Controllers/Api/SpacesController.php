@@ -112,13 +112,26 @@ class SpacesController extends Controller
         $minPrice = $this->numericQuery($request, 'min_price');
 
         if ($minPrice !== null) {
-            $query->whereRaw(self::HOURLY_PRICE_SQL . ' >= ?', [$minPrice]);
+            // Two placeholders in this SQL, in this order: the `price_type = ?`
+            // that is part of HOURLY_PRICE_SQL itself, then the comparison value.
+            // Binding only [$minPrice] left 'hourly' compared against the price
+            // and gave the comparison a NULL, so every price filter returned an
+            // empty catalogue rather than an error.
+            //
+            // The `+ 0` is not decoration. pricing.price is a string column, so
+            // the subquery already forces it numeric with `price + 0`; without
+            // the same on this side PDO binds the PHP float as text and SQLite
+            // orders by storage class (numeric always sorts below text), which
+            // made every comparison false. MySQL coerces the string and was
+            // unaffected, so this filter could pass on one engine and return an
+            // empty catalogue on the other.
+            $query->whereRaw(self::HOURLY_PRICE_SQL . ' >= ? + 0', ['hourly', $minPrice]);
         }
 
         $maxPrice = $this->numericQuery($request, 'max_price');
 
         if ($maxPrice !== null) {
-            $query->whereRaw(self::HOURLY_PRICE_SQL . ' <= ?', [$maxPrice]);
+            $query->whereRaw(self::HOURLY_PRICE_SQL . ' <= ? + 0', ['hourly', $maxPrice]);
         }
 
         foreach ($this->requestedAmenities($request) as $name) {
@@ -128,7 +141,10 @@ class SpacesController extends Controller
         $minRating = $this->numericQuery($request, 'min_rating');
 
         if ($minRating !== null && $minRating > 0) {
-            $query->whereRaw(self::RATING_SQL . ' >= ?', [
+            // `+ 0` for the same reason as the price filters above: a PHP float
+            // bound as text never compares greater than a numeric average in
+            // SQLite, so a min_rating filter matched nothing.
+            $query->whereRaw(self::RATING_SQL . ' >= ? + 0', [
                 max(0.0, min(5.0, $minRating)),
             ]);
         }

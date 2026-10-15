@@ -167,7 +167,16 @@ class ThrottleVerifiedAttempts
         }
 
         $limit = $this->limitFor($limiter, $request);
-        $maxAttempts = $limit->maxAttempts();
+
+        // Read as properties, not methods. Illuminate\Cache\RateLimiting\Limit
+        // had maxAttempts() and decaySeconds() up to Laravel 10; from 11 on they
+        // are public properties and the methods are gone. Calling them is a
+        // fatal Error, which the handler renders as a 500 — so every request to
+        // /verify-otp, /resend-otp and /reset-password was answering 500 before
+        // reaching the controller, which is three dead endpoints rather than a
+        // broken rate limit. No test covered it because every test in this file
+        // was failing for the same reason and nobody could tell it apart.
+        $maxAttempts = $limit->maxAttempts;
 
         if ($maxAttempts === PHP_INT_MAX) {
             // Limit::none() — the limiter deliberately allows everything. Counting
@@ -175,7 +184,7 @@ class ThrottleVerifiedAttempts
             return $next($request);
         }
 
-        $decaySeconds = $limit->decaySeconds();
+        $decaySeconds = $limit->decaySeconds;
         $key = self::cacheKey($request, $limiter);
 
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {

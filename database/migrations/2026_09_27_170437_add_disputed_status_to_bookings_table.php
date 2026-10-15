@@ -12,11 +12,23 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Add 'disputed' to the status enum. SQLite has no ENUM type and rejects
-        // MODIFY COLUMN, so the statement is skipped outside MySQL. The column is
-        // created by an earlier migration as a plain string there, which is fine.
+        $states = ['pending', 'confirmed', 'checked_in', 'completed', 'cancelled', 'disputed'];
+
+        // SQLite has no ENUM type and rejects MODIFY COLUMN, so the statement is
+        // skipped there — but that is not a no-op. Laravel compiles `enum` on
+        // SQLite as a varchar carrying a CHECK constraint, so skipping the widen
+        // left the column unable to hold 'disputed' at all: an admin marking a
+        // booking disputed got a 500 from the CHECK, while MySQL accepted the
+        // same write. The schema builder rebuilds the table with the new
+        // constraint, which is the SQLite equivalent of the ALTER above.
         if (DB::getDriverName() === 'mysql') {
-            DB::statement("ALTER TABLE bookings MODIFY COLUMN status ENUM('pending', 'confirmed', 'checked_in', 'completed', 'cancelled', 'disputed') NOT NULL");
+            $quoted = implode(', ', array_map(fn ($state) => "'{$state}'", $states));
+
+            DB::statement("ALTER TABLE bookings MODIFY COLUMN status ENUM({$quoted}) NOT NULL");
+        } else {
+            Schema::table('bookings', function (Blueprint $table) use ($states) {
+                $table->enum('status', $states)->change();
+            });
         }
 
         Schema::table('bookings', function (Blueprint $table) {
@@ -35,6 +47,10 @@ return new class extends Migration
 
         if (DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE bookings MODIFY COLUMN status ENUM('pending', 'confirmed', 'checked_in', 'completed', 'cancelled') NOT NULL");
+        } else {
+            Schema::table('bookings', function (Blueprint $table) {
+                $table->enum('status', ['pending', 'confirmed', 'checked_in', 'completed', 'cancelled'])->change();
+            });
         }
     }
 };

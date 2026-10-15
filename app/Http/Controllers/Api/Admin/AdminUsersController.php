@@ -49,8 +49,17 @@ class AdminUsersController extends Controller
             $query->where('status', $request->status);
         }
         if ($request->has('verified')) {
-            $isVerified = $request->verified === 'verified';
-            $query->whereNotNull($isVerified ? 'verified_at' : DB::raw('null'));
+            // Two branches, two different questions, so they are written out.
+            // This used to read
+            //     $query->whereNotNull($isVerified ? 'verified_at' : DB::raw('null'));
+            // which for the unverified branch compiles to `not null is not null` —
+            // always false, so filtering by unverified returned nobody at all
+            // rather than nobody who is verified.
+            if ($request->verified === 'verified') {
+                $query->whereNotNull('verified_at');
+            } else {
+                $query->whereNull('verified_at');
+            }
         }
         if ($request->has('joined_from')) {
             $query->whereDate('created_at', '>=', $request->joined_from);

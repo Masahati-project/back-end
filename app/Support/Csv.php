@@ -30,16 +30,21 @@ class Csv
         // Cast scalars to string
         $s = (string) $value;
 
-        // RFC 4180: wrap if contains comma, double quote, CR or LF
-        $needsQuotes = preg_match('/[",\r\n]/', $s);
-        if ($needsQuotes) {
-            $s = '"' . str_replace('"', '""', $s) . '"';
-        }
-
-        // Formula-injection guard: prefix with ' if starts with = + - @ tab CR
-        // Check the FIRST character of the RFC-escaped value.
+        // Formula-injection guard runs on the RAW value, before RFC 4180 quoting.
+        //
+        // It used to run afterwards and inspect the first character of the
+        // already-escaped string, which meant any value that needed quoting —
+        // precisely the ones containing a comma, a quote, CR or LF, and so
+        // precisely the interesting ones — began with `"` and slipped through.
+        // `=SUM(1,2)` was exported as `"=SUM(1,2)"` and Excel still evaluated it
+        // on open. The guard has to see what the cell will actually start with.
         if ($s !== '' && preg_match('/^[=+\-@\t\r]/', $s)) {
             $s = "'" . $s;
+        }
+
+        // RFC 4180: wrap if contains comma, double quote, CR or LF
+        if (preg_match('/[",\r\n]/', $s)) {
+            return '"' . str_replace('"', '""', $s) . '"';
         }
 
         return $s;
