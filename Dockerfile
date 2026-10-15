@@ -24,5 +24,5 @@ RUN composer install --no-dev --optimize-autoloader
 
 # Only the last CMD takes effect in Docker. The migration and the cache clear
 # must be chained here, otherwise the database is never migrated on deploy.
-CMD sh -c "php artisan config:clear && php artisan cache:clear && php artisan migrate:fresh --force && php artisan serve --host=0.0.0.0 --port=$PORT"
+CMD sh -c "php artisan config:clear && php artisan cache:clear && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT"
 
