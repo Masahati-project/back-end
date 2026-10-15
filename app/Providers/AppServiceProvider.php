@@ -6,6 +6,7 @@ use App\Events\OfferAccepted;
 use App\Events\OfferRejected;
 use App\Events\SpecialRequestCreated;
 use App\Http\Middleware\ThrottleVerifiedAttempts;
+use App\Http\Middleware\ThrottleSpaceCreation;
 use App\Listeners\SendOfferAcceptedNotification;
 use App\Listeners\SendOfferRejectedNotification;
 use App\Listeners\SendSpecialRequestNotification;
@@ -48,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->registerAuthRateLimiters();
+        $this->registerSpaceCreationRateLimiter();
     }
 
     /**
@@ -125,6 +127,36 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for(ThrottleVerifiedAttempts::RESET_PASSWORD, function (Request $request) {
             return Limit::perMinute(5)->by(
                 ThrottleVerifiedAttempts::cacheKey($request, ThrottleVerifiedAttempts::RESET_PASSWORD)
+            );
+        });
+    }
+
+    /**
+     * POST /api/owner/spaces — two listings per owner per minute.
+     *
+     * Abuse stopped: a flood of listings to bury the admin's review queue. Every
+     * listing is a pending row, a unit, a pricing row and a document upload, and
+     * an owner account is now active from registration, so nothing upstream
+     * stands between an owner and an arbitrarily long list of spaces.
+     *
+     * The identity is the authenticated owner, not the request IP. The three
+     * limiters above are keyed on an unauthenticated field, where the IP has to
+     * be in the key because that field is attacker-suppliable; here the caller
+     * is already identified by their token, and an IP-keyed bucket would be both
+     * wrong (one office, or one carrier CGNAT range, locking out every user
+     * behind it) and useless (an owner switching networks resets their own limit).
+     *
+     * The attempt itself is counted by
+     * App\Http\Middleware\ThrottleSpaceCreation, and only for a listing that was
+     * really created.
+     */
+    protected function registerSpaceCreationRateLimiter(): void
+    {
+        RateLimiter::for(ThrottleSpaceCreation::LIMITER, function (Request $request) {
+            $user = $request->user();
+
+            return Limit::perMinute(ThrottleSpaceCreation::MAX_PER_MINUTE)->by(
+                $user ? 'user:'.$user->getAuthIdentifier() : 'ip:'.$request->ip()
             );
         });
     }

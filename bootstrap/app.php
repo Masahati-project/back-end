@@ -14,6 +14,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        // Prepended so it runs before anything that can answer: the handler
+        // decides between a JSON 422 and a 302 redirect on $request->expectsJson(),
+        // and without this a client that posts a form without an Accept header
+        // gets a redirect instead of its validation errors. Laravel used to ship
+        // this in the api group and no longer does.
+        $middleware->api(prepend: [
+            \App\Http\Middleware\ForceJsonResponse::class,
+        ]);
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
             // Counts an attempt only once the body's identifier field validates,
@@ -22,6 +30,11 @@ return Application::configure(basePath: dirname(__DIR__))
             // `throttle-verified:verify-otp`, `:resend-otp` and `:reset-password`;
             // the names are the ones registered in AppServiceProvider::boot().
             'throttle-verified' => \App\Http\Middleware\ThrottleVerifiedAttempts::class,
+            // POST /api/owner/spaces — two listings per owner per minute. Counts a
+            // space only once it has actually been created, so a validation error
+            // does not cost the owner one of the two. The limiter itself is
+            // registered in AppServiceProvider::boot().
+            'throttle-space-creation' => \App\Http\Middleware\ThrottleSpaceCreation::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -123,7 +123,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('auth:sanctum')->prefix('owner')->group(function () {
         // Spaces
         Route::get('/spaces', [OwnerSpaceController::class, 'index'])->name('owner.spaces.index');
-        Route::post('/spaces', [OwnerSpaceController::class, 'store'])->name('owner.spaces.store');
+        Route::post('/spaces', [OwnerSpaceController::class, 'store'])
+            // Two listings a minute, counted per owner. See
+            // App\Http\Middleware\ThrottleSpaceCreation.
+            ->middleware('throttle-space-creation')
+            ->name('owner.spaces.store');
         // Literal routes MUST come before parameterised routes they shadow.
         // whereNumber() on the params below makes shadowing structurally impossible
         // regardless of declaration order.
