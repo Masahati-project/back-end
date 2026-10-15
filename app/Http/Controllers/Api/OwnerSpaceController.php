@@ -165,12 +165,19 @@ class OwnerSpaceController extends Controller
             'internet' => 'required|boolean',
             'power' => 'required|boolean',
             'image' => 'nullable|string',
-            'docs' => 'nullable|array',
-            'space_document_url' => 'nullable|string|max:255',
+            'docs' => 'required|file',
             'open_time' => 'required',
             'close_time' => 'required',
             'contact_phone' => 'required'
         ]);
+        
+        if ($request->hasFile('docs')) {
+            $file = $request->file('docs');
+            $path = $file->store('documents', 'cloudinary');
+            $request->merge([
+                'proof_document_url' => $path,
+            ]);
+        }
 
         $space = Workspace::create([
             'owner_id' => Auth::id(),
