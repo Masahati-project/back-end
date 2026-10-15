@@ -288,7 +288,7 @@ class OwnerRouteShadowingTest extends TestCase
         // A 200 is not enough: the literal route must reach ITS handler and not some
         // other one. Each path is therefore asked for the key only that handler emits.
         $owner = $this->owner();
-        $space = $this->spaceFor($owner, ['status' => 'approved', 'is_active' => true]);
+        $space = $this->spaceFor($owner, ['status' => 'active', 'is_active' => true]);
         $this->publishedAd($owner);
 
         $token = $this->token($owner);
@@ -476,12 +476,12 @@ class OwnerRouteShadowingTest extends TestCase
 
         $live = $this->spaceFor($owner, [
             'title' => 'مساحة مفتوحة',
-            'status' => 'approved',
+            'status' => 'active',
             'is_active' => true,
         ]);
         $this->spaceFor($owner, [
             'title' => 'مساحة معطلة',
-            'status' => 'approved',
+            'status' => 'active',
             'is_active' => false,
         ]);
         $this->spaceFor($owner, [
@@ -504,7 +504,7 @@ class OwnerRouteShadowingTest extends TestCase
             ->assertJsonCount(1, 'spaces')
             ->assertJsonPath('spaces.0.id', $live->id)
             ->assertJsonPath('spaces.0.title', 'مساحة مفتوحة')
-            ->assertJsonPath('spaces.0.status', 'approved')
+            ->assertJsonPath('spaces.0.status', 'active')
             ->assertJsonPath('spaces.0.is_active', true);
     }
 
@@ -515,7 +515,7 @@ class OwnerRouteShadowingTest extends TestCase
         // actually proves the two cannot drift: the card and the full list read the
         // same fields, and adding a field to one adds it to both.
         $owner = $this->owner();
-        $this->spaceFor($owner, ['status' => 'approved', 'is_active' => true]);
+        $this->spaceFor($owner, ['status' => 'active', 'is_active' => true]);
 
         $token = $this->token($owner);
 
@@ -537,7 +537,7 @@ class OwnerRouteShadowingTest extends TestCase
         // deleted is not live and must not be listed. The flag is set directly
         // because without the trait a delete() is a hard delete.
         $owner = $this->owner();
-        $space = $this->spaceFor($owner, ['status' => 'approved', 'is_active' => true]);
+        $space = $this->spaceFor($owner, ['status' => 'active', 'is_active' => true]);
 
         $space->deleted_at = now();
         $space->save();
@@ -559,8 +559,8 @@ class OwnerRouteShadowingTest extends TestCase
         // row that exists in the database at the end of the test.
         $owner = $this->owner();
 
-        $this->spaceFor($owner, ['status' => 'approved', 'is_active' => true]);
-        $this->spaceFor($owner, ['status' => 'approved', 'is_active' => false]);
+        $this->spaceFor($owner, ['status' => 'active', 'is_active' => true]);
+        $this->spaceFor($owner, ['status' => 'active', 'is_active' => false]);
         $this->spaceFor($owner, ['status' => 'pending', 'is_active' => true]);
         $this->spaceFor($owner, ['status' => 'rejected', 'is_active' => false]);
 
@@ -577,7 +577,7 @@ class OwnerRouteShadowingTest extends TestCase
             ->assertJsonPath('stats.rejected', 1)
             ->assertJsonPath('stats.active', 2)
             ->assertJsonPath('stats.inactive', 2)
-            ->assertJsonPath('stats.by_status.approved', 2)
+            ->assertJsonPath('stats.by_status.active', 2)
             ->assertJsonPath('stats.by_status.pending', 1)
             ->assertJsonPath('stats.by_status.rejected', 1)
             ->assertJsonPath('stats.by_is_active.active', 2)
@@ -603,7 +603,7 @@ class OwnerRouteShadowingTest extends TestCase
             ->assertJsonCount(0, 'stats.spaces')
             ->assertJsonPath('stats.total', 0)
             ->assertJsonPath('stats.by_status.pending', 0)
-            ->assertJsonPath('stats.by_status.approved', 0)
+            ->assertJsonPath('stats.by_status.active', 0)
             ->assertJsonPath('stats.by_status.rejected', 0)
             ->assertJsonPath('stats.monthly_bookings', 0)
             ->assertJsonPath('stats.truncated', false);
@@ -618,7 +618,7 @@ class OwnerRouteShadowingTest extends TestCase
         $owner = $this->owner();
         $customer = $this->customer();
 
-        $busy = $this->spaceFor($owner, ['status' => 'approved', 'is_active' => true]);
+        $busy = $this->spaceFor($owner, ['status' => 'active', 'is_active' => true]);
         $busyUnit = $this->unitFor($busy);
 
         // Two confirmed bookings this month for the busy space, one pending booking
@@ -635,12 +635,12 @@ class OwnerRouteShadowingTest extends TestCase
             'total_price' => 999,
         ]);
 
-        $quiet = $this->spaceFor($owner, ['status' => 'approved', 'is_active' => true]);
+        $quiet = $this->spaceFor($owner, ['status' => 'active', 'is_active' => true]);
         $quietUnit = $this->unitFor($quiet);
         $this->confirmedBooking($customer, $quietUnit, 50);
 
         $otherOwner = $this->owner();
-        $foreign = $this->spaceFor($otherOwner, ['status' => 'approved', 'is_active' => true]);
+        $foreign = $this->spaceFor($otherOwner, ['status' => 'active', 'is_active' => true]);
         $foreignUnit = $this->unitFor($foreign);
         $this->confirmedBooking($customer, $foreignUnit, 5000);
 
@@ -688,7 +688,7 @@ class OwnerRouteShadowingTest extends TestCase
         // dashboard always has one — but a row inserted directly (an import, an admin
         // fix, a test) may have none. The figure has to be 0, not a division error.
         $owner = $this->owner();
-        $this->spaceFor($owner, ['status' => 'approved', 'is_active' => true]);
+        $this->spaceFor($owner, ['status' => 'active', 'is_active' => true]);
 
         $this->withToken($this->token($owner))
             ->getJson('/api/owner/spaces/stats')
@@ -978,12 +978,12 @@ class OwnerRouteShadowingTest extends TestCase
 
         $mine = $this->spaceFor($owner, [
             'title' => 'مساحتي',
-            'status' => 'approved',
+            'status' => 'active',
             'is_active' => true,
         ]);
         $theirs = $this->spaceFor($otherOwner, [
             'title' => 'مساحتهم',
-            'status' => 'approved',
+            'status' => 'active',
             'is_active' => true,
         ]);
 

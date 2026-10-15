@@ -62,7 +62,7 @@ class SpaceCatalogTest extends TestCase
             'latitude' => 24.7136,
             'longitude' => 46.6753,
             'contact_phone' => '0500000000',
-            'status' => 'approved',
+            'status' => 'active',
             'open_time' => '08:00',
             'close_time' => '22:00',
             'is_closed' => false,
@@ -191,7 +191,7 @@ class SpaceCatalogTest extends TestCase
             ->assertJsonPath('has_more', true);
 
         $this->assertSame($response->json('data'), $response->json('spaces'));
-        $this->assertJsonCount(1, 'data');
+        $response->assertJsonCount(1, 'data');
     }
 
     public function test_an_empty_catalogue_still_returns_an_array(): void
@@ -508,8 +508,8 @@ class SpaceCatalogTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.space_id', $hourlySpace->id)
-            ->assertJsonPath('data.0.price_per_hour', 120.0)
-            ->assertJsonPath('data.0.price', 120.0);
+            ->assertJsonPath('data.0.price_per_hour', 120)
+            ->assertJsonPath('data.0.price', 120);
     }
 
     public function test_amenities_require_every_listed_amenity(): void
@@ -768,10 +768,18 @@ class SpaceCatalogTest extends TestCase
 
         // The models cast these as decimal:2 / string, which serialise as
         // strings; the boundary undoes them so the frontend gets numbers.
-        $this->assertIsFloat($item['price_per_hour']);
-        $this->assertSame(75.0, $item['price_per_hour']);
+        //
+        // "a number, not the string '75.00'" is the contract being pinned here,
+        // not int-vs-float. json_encode() drops the fractional part of a whole
+        // float unless JSON_PRESERVE_ZERO_FRACTION is passed, so 75.0 arrives
+        // here as the int 75; demanding a float would mean changing the JSON
+        // encoding of every response in the API, which buys a JS client nothing.
+        $this->assertIsNotString($item['price_per_hour']);
+        $this->assertIsNumeric($item['price_per_hour']);
+        $this->assertEqualsWithDelta(75.0, $item['price_per_hour'], 0.001);
         $this->assertIsInt($item['capacity']);
-        $this->assertIsFloat($item['rating']);
+        $this->assertIsNotString($item['rating']);
+        $this->assertIsNumeric($item['rating']);
         $this->assertIsFloat($item['latitude']);
         $this->assertIsBool($item['is_active']);
         $this->assertIsBool($item['instant_booking']);
@@ -862,7 +870,9 @@ class SpaceCatalogTest extends TestCase
         $this->assertSame([], $bare['amenities']);
         $this->assertNull($bare['category']);
         $this->assertSame(0, $bare['capacity']);
-        $this->assertSame(0.0, $bare['rating']);
+        // 0.0 in PHP, 0 on the wire — see the note in the dual-spelled test.
+        $this->assertEqualsWithDelta(0.0, $bare['rating'], 0.001);
+        $this->assertIsNotString($bare['rating']);
         $this->assertSame(0, $bare['review_count']);
 
         $noPricing = collect($response->json('data'))->firstWhere('title', 'مساحة بلا تسعير');
@@ -918,7 +928,7 @@ class SpaceCatalogTest extends TestCase
             ->assertJsonPath('space.id', $space->id)
             ->assertJsonPath('data.id', $space->id)
             ->assertJsonPath('space.title', 'مساحة التفاصيل')
-            ->assertJsonPath('space.price_per_hour', 90.0)
+            ->assertJsonPath('space.price_per_hour', 90)
             ->assertJsonPath('space.instant_booking', true)
             ->assertJsonPath('space.gallery', ['spaces/detail.jpg']);
 

@@ -26,9 +26,15 @@ class PublicAdTest extends TestCase
         return $user->createToken('auth_token')->plainTextToken;
     }
 
-    private function owner(): User
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function owner(array $overrides = []): User
     {
-        return User::factory()->create(['role' => 'space_owner']);
+        // $overrides was being passed by the callers below and dropped on the
+        // floor, because this helper took no arguments at all — so the owner
+        // avatar assertions were reading a row the fixture never wrote.
+        return User::factory()->create(array_merge(['role' => 'space_owner'], $overrides));
     }
 
     private function customer(): User
@@ -50,7 +56,7 @@ class PublicAdTest extends TestCase
             'latitude' => 24.7136,
             'longitude' => 46.6753,
             'contact_phone' => '0500000000',
-            'status' => 'approved',
+            'status' => 'active',
             'open_time' => '08:00',
             'close_time' => '22:00',
             'is_closed' => false,

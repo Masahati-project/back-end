@@ -141,8 +141,15 @@ class AdminUsersTest extends TestCase
             'owner_id' => $owner->id,
             'title' => 'My Test Space',
             'location' => 'Ramallah',
-            'status' => 'approved',
+            // NOT NULL columns, so the fixture has to carry them like the rest of
+            // the suite's does.
+            'latitude' => 31.9038,
+            'longitude' => 35.2034,
+            'contact_phone' => '0590000000',
+            'status' => 'active',
             'is_active' => true,
+            // NOT NULL with no default, like latitude and contact_phone above.
+            'is_closed' => false,
             'open_time' => '08:00:00',
             'close_time' => '22:00:00',
         ]);
@@ -294,13 +301,14 @@ class AdminUsersTest extends TestCase
         $this->assertStringContainsString('text/csv', $response->headers->get('Content-Type'));
         $this->assertStringContainsString('attachment', $response->headers->get('Content-Disposition'));
 
-        $body = $response->getContent();
+        $body = $response->streamedContent();
         // Starts with UTF-8 BOM
         $this->assertStringStartsWith("\xEF\xBB\xBF", $body);
 
-        // Header row exactly
+        // Header row exactly. The BOM sits on this same line — it is written
+        // immediately before the header — and is asserted above.
         $lines = explode("\r\n", $body);
-        $this->assertSame('name,email,phone,role,status,verified,bookings,joined', $lines[0]);
+        $this->assertSame('name,email,phone,role,status,verified,bookings,joined', ltrim($lines[0], "\xEF\xBB\xBF"));
 
         // Two data rows + header = at least 3 lines
         $this->assertGreaterThanOrEqual(3, count($lines));
@@ -319,7 +327,7 @@ class AdminUsersTest extends TestCase
 
         $response->assertStatus(200);
 
-        $body = $response->getContent();
+        $body = $response->streamedContent();
         $lines = explode("\r\n", $body);
 
         // Header + 1 owner row
@@ -341,7 +349,7 @@ class AdminUsersTest extends TestCase
 
         $response->assertStatus(200);
 
-        $body = $response->getContent();
+        $body = $response->streamedContent();
         $lines = explode("\r\n", $body);
 
         // Header + 1 unverified row
@@ -364,7 +372,7 @@ class AdminUsersTest extends TestCase
 
         $response->assertStatus(200);
 
-        $body = $response->getContent();
+        $body = $response->streamedContent();
         $lines = explode("\r\n", $body);
 
         // Header + 2 data rows
@@ -389,7 +397,7 @@ class AdminUsersTest extends TestCase
 
         $response->assertStatus(200);
 
-        $body = $response->getContent();
+        $body = $response->streamedContent();
         $lines = explode("\r\n", $body);
 
         // The name field should be quoted and internal quotes doubled
@@ -411,7 +419,7 @@ class AdminUsersTest extends TestCase
 
         $response->assertStatus(200);
 
-        $body = $response->getContent();
+        $body = $response->streamedContent();
         $lines = explode("\r\n", $body);
 
         // Should be prefixed with single quote

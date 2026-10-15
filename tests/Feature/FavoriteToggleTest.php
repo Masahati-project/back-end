@@ -24,7 +24,7 @@ class FavoriteToggleTest extends TestCase
             'latitude' => 24.7136,
             'longitude' => 46.6753,
             'contact_phone' => '0500000000',
-            'status' => 'approved',
+            'status' => 'active',
             'open_time' => '08:00',
             'close_time' => '22:00',
             'is_closed' => false,

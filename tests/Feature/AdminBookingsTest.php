@@ -44,7 +44,7 @@ class AdminBookingsTest extends TestCase
             'latitude' => 31.5017,
             'longitude' => 34.4668,
             'contact_phone' => '0500000000',
-            'status' => 'approved',
+            'status' => 'active',
             'open_time' => '08:00',
             'close_time' => '22:00',
             'is_closed' => false,
@@ -304,13 +304,18 @@ class AdminBookingsTest extends TestCase
             ->assertJsonPath('data.id', $booking->id)
             ->assertJsonPath('data.ref', 'BK-1009');
 
-        // With # (simulate legacy stored form)
+        // With # (simulate legacy stored form).
         $legacyBooking = $this->createBooking($customer, $unit, ['ref' => '#BK-1010', 'status' => 'pending']);
 
+        // rawurlencode() is load-bearing: '#' is the URL fragment delimiter, so an
+        // unencoded one never reaches the server at all. The request arrives as
+        // /api/admin/bookings/ — the index route — and the show() branch below
+        // never runs.
         $response = $this->withToken($adminToken)
-            ->getJson("/api/admin/bookings/{$legacyBooking->ref}");
+            ->getJson('/api/admin/bookings/'.rawurlencode($legacyBooking->ref));
 
         $response->assertStatus(200)
-            ->assertJsonPath('data.id', $legacyBooking->id);
+            ->assertJsonPath('data.id', $legacyBooking->id)
+            ->assertJsonPath('data.ref', '#BK-1010');
     }
 }

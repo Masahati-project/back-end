@@ -205,7 +205,7 @@ class AuthRateLimitTest extends TestCase
 
         for ($attempt = 1; $attempt <= 5; $attempt++) {
             $this->postJson('/api/reset-password', $this->resetPasswordBody($user))
-                ->assertStatus(400);
+                ->assertStatus(422);
         }
 
         $response = $this->postJson('/api/reset-password', $this->resetPasswordBody($user));
@@ -278,7 +278,7 @@ class AuthRateLimitTest extends TestCase
         }
 
         $this->postJson('/api/reset-password', $this->resetPasswordBody($user))
-            ->assertStatus(400);
+            ->assertStatus(422);
 
         $this->assertSame(1, RateLimiter::attempts(
             $this->limiterKey(ThrottleVerifiedAttempts::RESET_PASSWORD, $user->email)
@@ -381,14 +381,14 @@ class AuthRateLimitTest extends TestCase
 
         for ($attempt = 1; $attempt <= 5; $attempt++) {
             $this->postJson('/api/reset-password', $this->resetPasswordBody($victim))
-                ->assertStatus(400);
+                ->assertStatus(422);
         }
 
         $this->postJson('/api/reset-password', $this->resetPasswordBody($victim))
             ->assertStatus(429);
 
         $this->postJson('/api/reset-password', $this->resetPasswordBody($bystander))
-            ->assertStatus(400)
+            ->assertStatus(422)
             ->assertJsonPath('message', 'الرمز غير صالح أو انتهت صلاحيته.');
     }
 
@@ -428,21 +428,36 @@ class AuthRateLimitTest extends TestCase
 
     public function test_normalising_the_identifier_does_not_mutate_the_request(): void
     {
-        // The middleware must be non-destructive: it reads the field, it does not
-        // rewrite it. Padding the email here makes that visible, because the
-        // controller's own `exists:users,email` rule rejects the padded value —
-        // proving the request reached the controller exactly as it was sent.
-        $user = User::factory()->create(['role' => 'customer']);
-        $padded = '  ' . $user->email . '  ';
+        // The middleware must be non-destructive: it reads the field to build its
+        // cache key, it does not rewrite the field on the request.
+        //
+        // This used to be observed through the controller — a padded email was
+        // expected to fail the `exists:users,email` rule — which cannot work:
+        // TrimStrings is global middleware that runs before any route, so the
+        // controller only ever sees the trimmed value and the rule passes. The
+        // request is inspected directly instead, which is what the promise is
+        // actually about. (The limiter still buckets the trimmed form — see
+        // test_the_registration_token_is_normalised_into_one_bucket.)
+        $padded = '  SomeOne@Example.com  ';
 
-        for ($attempt = 1; $attempt <= 5; $attempt++) {
-            $this->postJson('/api/reset-password', $this->resetPasswordBody($user, $padded))
-                ->assertStatus(422)
-                ->assertJsonValidationErrors(['email']);
-        }
+        $request = Request::create('/api/reset-password', 'POST', ['email' => $padded]);
 
-        $this->postJson('/api/reset-password', $this->resetPasswordBody($user, $padded))
-            ->assertStatus(429);
+        $response = (new ThrottleVerifiedAttempts())->handle(
+            $request,
+            fn () => response('passed through'),
+            ThrottleVerifiedAttempts::RESET_PASSWORD
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($padded, $request->input('email'), 'the middleware rewrote the request');
+        $this->assertArrayHasKey('email', $request->all());
+
+        // The limiter is keyed on the trimmed, lower-cased form of the value, so the
+        // padded spelling and the bare one share a bucket.
+        $this->assertSame(
+            'reset-password:someone@example.com:127.0.0.1',
+            ThrottleVerifiedAttempts::cacheKey($request, ThrottleVerifiedAttempts::RESET_PASSWORD)
+        );
     }
 
     public function test_an_over_long_identifier_still_produces_a_bounded_cache_key(): void
@@ -500,7 +515,7 @@ class AuthRateLimitTest extends TestCase
 
         for ($attempt = 1; $attempt <= 5; $attempt++) {
             $this->postJson('/api/reset-password', $this->resetPasswordBody($user))
-                ->assertStatus(400);
+                ->assertStatus(422);
         }
 
         $this->postJson('/api/reset-password', $this->resetPasswordBody($user))
@@ -532,7 +547,7 @@ class AuthRateLimitTest extends TestCase
         // reset-password has its own bucket, so a request against it still gets a
         // real answer from its controller while both OTP routes are locked out.
         $this->postJson('/api/reset-password', $this->resetPasswordBody($user))
-            ->assertStatus(400);
+            ->assertStatus(422);
     }
 
     public function test_locking_out_reset_password_does_not_disturb_the_otp_routes(): void
@@ -543,7 +558,7 @@ class AuthRateLimitTest extends TestCase
 
         for ($attempt = 1; $attempt <= 5; $attempt++) {
             $this->postJson('/api/reset-password', $this->resetPasswordBody($user))
-                ->assertStatus(400);
+                ->assertStatus(422);
         }
 
         $this->postJson('/api/reset-password', $this->resetPasswordBody($user))

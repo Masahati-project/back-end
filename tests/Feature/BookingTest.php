@@ -9,6 +9,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -68,7 +69,7 @@ class BookingTest extends TestCase
             'latitude' => 31.5017,
             'longitude' => 34.4668,
             'contact_phone' => '0500000000',
-            'status' => 'approved',
+            'status' => 'active',
             'open_time' => '08:00',
             'close_time' => '22:00',
             'is_closed' => false,
@@ -218,13 +219,18 @@ class BookingTest extends TestCase
             ->postJson('/api/bookings', $this->payload($workspace, ['hours' => 1, 'total_price' => 5]));
 
         $response->assertStatus(201)
-            ->assertJsonPath('booking.hours', 3.0)
-            ->assertJsonPath('booking.price', 150.0)
-            ->assertJsonPath('booking.total_price', 150.0);
+            ->assertJsonPath('booking.hours', 3)
+            ->assertJsonPath('booking.price', 150)
+            ->assertJsonPath('booking.total_price', 150);
 
         // total_price is decimal(10,2) and casts to a string ("150.00"), so it is
-        // cast back to a float at the boundary — the client renders it as a number.
-        $this->assertIsFloat($response->json('booking.price'));
+        // cast back to a number at the boundary — the client renders it as a
+        // number, not as "150.00". json_encode() drops the fractional part of a
+        // whole float, so it arrives as 150 rather than 150.0; what matters here
+        // is that it is a number.
+        $this->assertIsNotString($response->json('booking.price'));
+        $this->assertIsNumeric($response->json('booking.price'));
+        $this->assertEqualsWithDelta(150.0, $response->json('booking.price'), 0.001);
         $this->assertDatabaseHas('bookings', ['total_price' => 150]);
     }
 
@@ -245,7 +251,7 @@ class BookingTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonPath('booking.hours', 1.5)
-            ->assertJsonPath('booking.price', 75.0);
+            ->assertJsonPath('booking.price', 75);
 
         $this->assertDatabaseHas('bookings', ['total_price' => 75]);
     }
@@ -289,7 +295,7 @@ class BookingTest extends TestCase
             ->assertJsonPath('booking.start_time', '10:00')
             ->assertJsonPath('booking.time_to', '13:00')
             ->assertJsonPath('booking.end_time', '13:00')
-            ->assertJsonPath('booking.cost', 150.0);
+            ->assertJsonPath('booking.cost', 150);
     }
 
     // -------------------------------------------------------------------------
@@ -651,7 +657,7 @@ class BookingTest extends TestCase
                 'end_time' => '23:00',
             ]))
             ->assertStatus(201)
-            ->assertJsonPath('booking.hours', 2.0);
+            ->assertJsonPath('booking.hours', 2);
     }
 
     public function test_an_overnight_space_still_rejects_a_slot_before_opening(): void
@@ -861,6 +867,13 @@ class BookingTest extends TestCase
 
         // A different window, so this test stays about idempotency and not about
         // the overlap rule.
+        //
+        // forgetGuards() before the second customer: one application serves the
+        // whole test and RequestGuard::user() hands back the first customer for
+        // every later request, so the second caller was being read as the first
+        // and answered as a replay of its own key.
+        Auth::forgetGuards();
+
         $this->withToken($this->token($secondCustomer))
             ->withHeader('Idempotency-Key', 'shared-key')
             ->postJson('/api/bookings', $this->payload($workspace, [
