@@ -74,7 +74,10 @@ class GoogleAuthController extends Controller
         }
 
         $role = $request->input('role');
-        $status = $role === 'customer' ? 'active' : 'pending';
+
+        // Both roles register active. See AuthController::registerSpaceOwnerAccount:
+        // the listing is what waits for an admin, not the account.
+        $status = 'active';
 
         $user = User::create([
             'full_name' => $name,

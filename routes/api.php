@@ -208,9 +208,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/users/{id}', [AdminUsersController::class, 'destroy']);
         Route::post('/users/bulk-status', [AdminUsersController::class, 'bulkStatus']);
 
-        // Owner onboarding review. Approving here is what flips a space owner
-        // from `pending` to `active`, which is the only thing that lets them
-        // list a space — see App\Traits\OwnerVerification.
+        // The admin's decision on an owner's proof of identity. Owners register
+        // active and list straight away; this records what the admin concluded
+        // about their document. The listing itself is what waits for approval.
         Route::get('/documents', [AdminOwnerDocumentsController::class, 'index']);
         Route::get('/users/{id}/documents', [AdminOwnerDocumentsController::class, 'show'])
             ->whereNumber('id');

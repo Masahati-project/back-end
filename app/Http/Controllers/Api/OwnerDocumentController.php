@@ -101,13 +101,11 @@ class OwnerDocumentController extends Controller
             'reviewed_at' => null,
         ]);
 
-        // A re-submission returns the owner to review too. Leaving the user row
-        // at `active` while the document sits in `pending` would make the two
-        // disagree about whether the owner is cleared, and the gate trusts both.
-        $user = Auth::user();
-        if ($user->status === 'active' && $user->role === 'space_owner') {
-            $user->forceFill(['status' => 'pending'])->save();
-        }
+        // The account is deliberately left alone. It used to drop back to
+        // `pending` here on the grounds that the owner and the document must
+        // never disagree about being cleared — but the owner no longer needs
+        // clearing to list a space, so that only took a working owner out of
+        // their own dashboard every time they re-uploaded a document.
 
         return response()->json($this->formatDocumentResponse($document), 201);
     }
@@ -142,11 +140,18 @@ class OwnerDocumentController extends Controller
             // break a client reading files.assets / files.cert.
             'files' => (object) $filesBySlot,
             'note' => $document->note,
-            // The admin writes the decision's reason into the same column the
-            // review screen reads it from, so this is the owner's feedback and
-            // is null until a decision has actually been made.
-            'review_note' => $document->reviewed_at ? $document->note : null,
-            'admin_note' => $document->reviewed_at ? $document->note : null,
+            // The admin writes the decision's reason into the same column the review
+            // screen reads it from, so this is the owner's feedback. Only an
+            // admin decision ever writes `note` — a submission clears it — so the
+            // column alone is the signal. It used to be gated on `reviewed_at`
+            // as well, which meant any decision that did not stamp that column
+            // showed the owner no reason at all: a rejected document with a note
+            // rendered a blank rejection.
+            'review_note' => $document->note,
+            // Deliberately not mirrored. `admin_note` is internal working space
+            // for the review screen; both fields used to carry the identical
+            // expression, so the owner's payload leaked it under a second name.
+            'admin_note' => null,
             'submitted_at' => $document->submitted_at?->toIso8601String(),
             'submittedAt' => $document->submitted_at?->toIso8601String(),
             'reviewed_at' => $document->reviewed_at?->toIso8601String(),

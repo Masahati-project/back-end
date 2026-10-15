@@ -9,7 +9,6 @@ use App\Models\Unit;
 use App\Models\Workspace;
 use App\Services\ImageService;
 use App\Traits\OwnerAuthorization;
-use App\Traits\OwnerVerification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +16,6 @@ use Illuminate\Support\Facades\Auth;
 class OwnerSpaceController extends Controller
 {
     use OwnerAuthorization;
-    use OwnerVerification;
 
     private const OPEN_SPACES_LIMIT = 100;
     private const STATS_SPACES_LIMIT = 50;
@@ -148,10 +146,7 @@ class OwnerSpaceController extends Controller
     {
         $this->ensureOwnerRole();
 
-        // An owner may only list a space once an admin has approved their proof
-        // of ownership. This is the real rule, not a UI hint: the frontend
-        // hiding the button does not stop any other client from calling.
-        $this->ensureOwnerVerifiedToListSpaces();
+        $this->normalizeListingPayload($request);
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -165,18 +160,23 @@ class OwnerSpaceController extends Controller
             'internet' => 'required|boolean',
             'power' => 'required|boolean',
             'image' => 'nullable|string',
-            'docs' => 'required|file',
+            // The proof file behind the listing — the deed or the lease — is part
+            // of creating the listing, not a later step. There is still
+            // POST /owner/spaces/{space}/documents for replacing it once the
+            // space exists, but a space cannot be created without one.
+            'docs' => 'required|file|mimes:pdf,png,jpg,jpeg,webp|max:10240',
             'open_time' => 'required',
             'close_time' => 'required',
             'contact_phone' => 'required'
         ]);
-        
-        if ($request->hasFile('docs')) {
-            $file = $request->file('docs');
-            $path = $file->store('documents', 'cloudinary');
-            $request->merge([
-                'proof_document_url' => $path,
-            ]);
+
+        // Storage being unreachable is a server fault, and this file is required:
+        // answering 201 with a null space_document_url would tell the owner their
+        // deed is on file when it is not.
+        $proofPath = $request->file('docs')->store('documents', 'cloudinary');
+
+        if (! $proofPath) {
+            throw new \RuntimeException('تعذّر حفظ المستند على الخادم.');
         }
 
         $space = Workspace::create([
@@ -190,7 +190,7 @@ class OwnerSpaceController extends Controller
             'open_time' => $validated['open_time'],
             'close_time' => $validated['close_time'],
             'contact_phone' => $validated['contact_phone'],
-            'space_document_url' => $validated['space_document_url'] ?? null,
+            'space_document_url' => $proofPath,
             'is_closed' => false,
             'is_active' => false,
         ]);
@@ -372,6 +372,47 @@ class OwnerSpaceController extends Controller
         return Workspace::where('owner_id', Auth::id())->whereNull('deleted_at');
     }
 
+    /**
+     * Every create call carries `docs`, so every create call is multipart — and
+     * in multipart every other field arrives as a string. `boolean` accepts only
+     * true/false/1/0 and `array` accepts only a real array, so a form posting
+     * `internet=true` and `amenities=["wifi"]` was rejected with a 422 that read
+     * as "this form is broken" instead of "these two fields need a different
+     * encoding". Anything still unrecognisable is left untouched so validation
+     * reports it.
+     */
+    private function normalizeListingPayload(Request $request): void
+    {
+        $merge = [];
+
+        foreach (['internet', 'power'] as $flag) {
+            if (! is_string($request->input($flag))) {
+                continue;
+            }
+
+            $boolean = filter_var($request->input($flag), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+            if ($boolean !== null) {
+                $merge[$flag] = $boolean;
+            }
+        }
+
+        // FormData cannot nest, so a client with a list of amenities sends it
+        // JSON-encoded. Note that appending the same key once per amenity does
+        // not survive: PHP keeps only the last value.
+        if (is_string($request->input('amenities'))) {
+            $decoded = json_decode($request->input('amenities'), true);
+
+            if (is_array($decoded)) {
+                $merge['amenities'] = $decoded;
+            }
+        }
+
+        if ($merge !== []) {
+            $request->merge($merge);
+        }
+    }
+
     private function monthlyBookingTotals(array $workspaceIds): array
     {
         $empty = array_fill_keys($workspaceIds, [
@@ -476,6 +517,9 @@ class OwnerSpaceController extends Controller
             'longitude' => $space->longitude,
             'image' => $image,
             'gallery' => $space->images->pluck('image_url')->toArray(),
+            // The proof file behind the listing, so the owner's own screen can
+            // show that the upload landed instead of assuming it did.
+            'space_document_url' => $space->space_document_url,
             'price_per_hour' => $pricePerHour,
             'price' => $pricePerHour,
             'capacity' => $capacity,

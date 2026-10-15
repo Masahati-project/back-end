@@ -9,16 +9,15 @@ use App\Services\NotificationService;
 use Illuminate\Http\Request;
 
 /**
- * The admin's review queue for owner onboarding.
+ * The admin's review queue for an owner's proof of identity.
  *
- * This is the step that was missing from the flow: an owner uploads proof of
- * ownership, and until an admin approves it nothing in the system could move them
- * out of `pending`. Without this endpoint there is no way for an owner to ever
- * list a space.
+ * This does not decide whether an owner may list a space — owners register
+ * active and POST /owner/spaces straight away, and the listing they create is
+ * what sits in `pending` until it is approved. What this records is the admin's
+ * conclusion about the owner's own document.
  *
- * Approving is the single action that clears the owner: it stamps the document
- * `approved` and flips the user to `active` together, so the two can never
- * disagree about whether the owner is cleared.
+ * Approving still writes both halves together, so the document's decision and
+ * the account's `status` cannot disagree about a user the admin has suspended.
  */
 class AdminOwnerDocumentsController extends Controller
 {
@@ -118,8 +117,9 @@ class AdminOwnerDocumentsController extends Controller
             'reviewed_at' => now(),
         ]);
 
-        // The approval is what activates the owner, so both writes happen here
-        // and nowhere else.
+        // Approving the document also lifts an account the admin had suspended,
+        // so the two rows cannot end up saying opposite things. For the usual
+        // case — an owner who registered active — this write changes nothing.
         if ($status === 'approved') {
             $user->forceFill([
                 'status' => 'active',
@@ -131,7 +131,7 @@ class AdminOwnerDocumentsController extends Controller
             $user->id,
             'owner_verification',
             $status === 'approved'
-                ? 'تمت الموافقة على مستند إثبات الملكية. يمكنك الآن إضافة المساحات.'
+                ? 'تمت الموافقة على مستند إثبات الملكية.'
                 : 'تم رفض مستند إثبات الملكية. يرجى رفع مستند صحيح.'
                 . ($note ? ' السبب: ' . $note : ''),
         );

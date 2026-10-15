@@ -44,7 +44,12 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'proof_document_url' => $request?->proof_document_url,
             'role' => 'space_owner',
-            'status' => 'pending',
+            // An owner is usable the moment the OTP is confirmed. What gets
+            // reviewed is the listing they create (`workspaces.status` starts at
+            // `pending`), not the account behind it, so registering the owner
+            // `pending` only produced accounts that could sign in and then do
+            // nothing at all.
+            'status' => 'active',
             'otp' => hash('sha256', (string)$otp),
         ], now()->addMinutes(10));
 
