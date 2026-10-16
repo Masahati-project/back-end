@@ -74,8 +74,6 @@ class SpecialRequestController extends Controller
         $workspace = $offer->workspace;
         $owner = $workspace?->owner;
 
-        // The model casts price to decimal:2, which serialises as a string.
-        // The frontend renders it as a number, so cast it back.
         $price = $offer->price_per_hour !== null ? (float) $offer->price_per_hour : null;
 
         return [
@@ -152,7 +150,6 @@ class SpecialRequestController extends Controller
             ->withCount('offers')
             ->where('status', 'open')
             ->where('user_id', '!=', $request->user()->id)
-            // A request past its expiry date is no longer open for proposals.
             ->where(function ($q) {
                 $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
             })
@@ -200,8 +197,6 @@ class SpecialRequestController extends Controller
 
         $workspace = $this->ensureOwnsWorkspace($validated['space_id']);
 
-        // One offer per owner per request. The frontend hides the button after the
-        // first attempt, but this rule is the source of truth.
         $existing = Offer::where('special_request_id', $specialRequest->id)
             ->where('workspace_id', $workspace->id)
             ->exists();
@@ -249,8 +244,6 @@ class SpecialRequestController extends Controller
 
         return response()->json([
             'request' => $this->formatRequest($specialRequest),
-            // The offers array must be present, otherwise the customer sees an
-            // empty list with no error to explain it.
             'offers' => $offers,
             'message' => 'تم جلب الطلب الخاص بنجاح',
         ], 200);
@@ -262,14 +255,11 @@ class SpecialRequestController extends Controller
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 
-        // Scoping the lookup to the request stops an offer from another request
-        // being accepted through a mismatched {requestId}/{offerId} pair.
         $offer = Offer::with('workspace.units', 'workspace.images')
             ->where('id', $offerId)
             ->where('special_request_id', $specialRequest->id)
             ->firstOrFail();
 
-        // An offer that was already rejected or closed cannot be accepted.
         if ($offer->status !== 'pending') {
             return response()->json([
                 'message' => 'العرض غير متاح.',
@@ -287,8 +277,6 @@ class SpecialRequestController extends Controller
 
         $durationHours = (int) ($offer->duration_hours ?: 1);
 
-        // No preferred date is stored on the request, so the booking starts at the
-        // next full hour and runs for the duration the owner quoted.
         $start = Carbon::now()->addHour()->startOfHour();
         $end = $start->copy()->addHours($durationHours);
         $totalPrice = round((float) $offer->price_per_hour * $durationHours, 2);
@@ -306,14 +294,10 @@ class SpecialRequestController extends Controller
                 'notes' => $offer->notes,
             ]);
 
-            // The admin panel addresses a booking by ref, and GET
-            // /api/admin/bookings/{ref} looks the column up directly. Without
-            // this every booking in the system is unopenable from the panel.
             $booking->update(['ref' => Booking::generateRef($booking->id)]);
 
             $offer->update(['status' => 'accepted']);
 
-            // Only one proposal can win; the rest are closed out.
             $specialRequest->offers()
                 ->where('id', '!=', $offer->id)
                 ->where('status', 'pending')
@@ -356,7 +340,6 @@ class SpecialRequestController extends Controller
             ->where('special_request_id', $specialRequest->id)
             ->firstOrFail();
 
-        // Rejecting one proposal leaves the request open for other owners.
         $offer->update(['status' => 'rejected']);
 
         OfferRejected::dispatch($specialRequest, $offer);
@@ -376,7 +359,6 @@ class SpecialRequestController extends Controller
 
         $specialRequest->update(['status' => 'closed']);
 
-        // Offers still waiting on a decision are closed along with the request.
         $specialRequest->offers()
             ->where('status', 'pending')
             ->update(['status' => 'closed']);

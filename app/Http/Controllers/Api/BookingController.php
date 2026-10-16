@@ -30,10 +30,6 @@ class BookingController extends Controller
      */
     public function store(Request $request)
     {
-        // The role gate is inline rather than in a FormRequest on purpose: every
-        // FormRequest in this repo returns authorize() => true and the role check
-        // is always done in the controller (see OwnerAuthorization::ensureOwnerRole
-        // for the mirror image of this, the space_owner side). Only customers book.
         if ($request->user()->role !== 'customer') {
             return response()->json([
                 'message' => 'إنشاء الحجز متاح لحسابات العملاء فقط.',
@@ -47,32 +43,18 @@ class BookingController extends Controller
             'space_id' => [
                 'required',
                 'integer',
-                // A customer may only book a space that is actually on sale, so
-                // "active and listed" is part of the rule itself: an unknown id,
-                // a space still pending approval, a suspended or rejected one and
-                // a deactivated space all fail here with Laravel's normal
-                // per-field validation error.
                 Rule::exists('workspaces', 'id')
                     ->where('status', 'active')
                     ->where('is_active', true),
             ],
-            // Today is allowed: a customer may book a slot that starts in an hour.
             'booking_date' => ['required', 'string', 'date_format:Y-m-d', 'after_or_equal:today'],
-            // Both clock spellings: the app sends "10:00", some older builds and
-            // the owner dashboard send "10:00:00".
             'start_time' => ['required', 'string', 'date_format:H:i,H:i:s'],
             'end_time' => ['required', 'string', 'date_format:H:i,H:i:s'],
-            // Accepted so the payload the client already sends validates, and then
-            // deliberately ignored — see the price computation below.
             'hours' => ['nullable', 'integer', 'min:1'],
-            // Optional, see resolveUnit().
             'unit_id' => ['nullable', 'integer'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        // Replay before any work: a retry of a request that already succeeded must
-        // return the booking that already exists, not fall through and hit the
-        // overlap check it would now (correctly) be blocked by.
         if ($idempotencyKey !== null) {
             $replay = $this->bookingForIdempotencyKey($userId, $idempotencyKey);
 
@@ -81,15 +63,6 @@ class BookingController extends Controller
             }
         }
 
-        // The exists rule above already narrowed the space down to approved and
-        // active; it is read again rather than trusted because open_time,
-        // close_time and owner_id — all needed below — live on it and are not part
-        // of the rule.
-        //
-        // The deleted_at filter is written out by hand here because Workspace
-        // imports SoftDeletes but never uses the trait: the column exists, but
-        // nothing filters soft-deleted rows automatically, and a deleted space
-        // would otherwise keep taking bookings.
         $workspace = Workspace::where('id', $validated['space_id'])
             ->where('status', 'active')
             ->where('is_active', true)
@@ -97,9 +70,6 @@ class BookingController extends Controller
             ->first();
 
         if (! $workspace) {
-            // Shaped like a validation failure because it is one: the client sent
-            // a space_id it can no longer book, and the form has to say so on the
-            // field rather than as a free-floating banner.
             return $this->fieldError('هذه المساحة غير متاحة للحجز حالياً.', 'space_id');
         }
 
@@ -109,23 +79,13 @@ class BookingController extends Controller
             return $unitError;
         }
 
-        // Times are compared as minutes-from-midnight instead of as datetimes or
-        // strings: `open_time`/`close_time` are TIME columns, so MySQL returns
-        // "08:00:00" and SQLite "08:00" depending on driver and version. A
-        // string comparison of those two is a silent, driver-dependent bug.
         $startMinutes = $this->minutesOfDay($validated['start_time']);
         $endMinutes = $this->minutesOfDay($validated['end_time']);
 
-        // Normalised comparison, so "10:00" and "10:00:00" are the same instant
-        // and a zero-length booking is refused rather than stored and billed for
-        // 0 hours.
         if ($startMinutes === $endMinutes) {
             return $this->fieldError('وقت النهاية يجب أن يختلف عن وقت البداية.', 'end_time');
         }
 
-        // The payload carries one date and no end date, so the booking cannot
-        // cross midnight: end is built on booking_date, which means an end clock
-        // earlier than the start clock would produce a backwards interval.
         if ($endMinutes < $startMinutes) {
             return $this->fieldError('وقت النهاية يجب أن يكون بعد وقت البداية.', 'end_time');
         }
@@ -133,20 +93,12 @@ class BookingController extends Controller
         $openMinutes = $this->minutesOfDay($workspace->open_time);
         $closeMinutes = $this->minutesOfDay($workspace->close_time);
 
-        // A negative value means the column could not be read as a clock time at
-        // all. Reading that as "open all day" would let a customer book a space
-        // whose opening hours nobody ever recorded, so it is refused instead.
         if ($openMinutes < 0 || $closeMinutes < 0) {
             return response()->json([
                 'message' => 'ساعات عمل هذه المساحة غير محددة، ولا يمكن إتمام الحجز الآن.',
             ], 422);
         }
 
-        // close_time < open_time is NOT a data error and must not be rejected: it
-        // is how a space that is open past midnight is stored (a 24h desk, a
-        // night-shift study room: open 20:00, close 04:00). The window simply runs
-        // into the next day, so the closing bound is pushed a full day out.
-        // open_time == close_time is read the same way, as a 24-hour window.
         $overnight = $closeMinutes <= $openMinutes;
         $closesAt = $closeMinutes + ($overnight ? 1440 : 0);
 
@@ -159,22 +111,12 @@ class BookingController extends Controller
         $start = Carbon::parse($validated['booking_date'] . ' ' . substr($validated['start_time'], 0, 5));
         $end = Carbon::parse($validated['booking_date'] . ' ' . substr($validated['end_time'], 0, 5));
 
-        // Derived from the two timestamps, never from the `hours` the client sent:
-        // a client that under-reports hours would be under-charged, and one that
-        // over-reports them would be shown a total that does not match its own
-        // price list. diffInMinutes (not the int diffInHours) so a 90 minute slot
-        // is billed as 1.5 hours.
         $hours = round($start->diffInMinutes($end) / 60, 2);
 
         $hourly = Pricing::where('unit_id', $unit->id)
             ->where('price_type', 'hourly')
             ->first();
 
-        // pricing.price is a STRING column, so it has to be cast before it can be
-        // used as a number. A unit with no hourly row — or a row whose string is
-        // not a positive amount — would otherwise book for 0.00: the customer
-        // would get a free slot and the owner would never learn why the booking
-        // was worth nothing. Refusing loudly is the only safe reading.
         $hourlyRate = $hourly instanceof Pricing ? (float) $hourly->price : 0.0;
 
         if ($hourlyRate <= 0) {
@@ -187,47 +129,12 @@ class BookingController extends Controller
 
         try {
             $result = DB::transaction(function () use ($userId, $validated, $unit, $start, $end, $hours, $price, $idempotencyKey) {
-                // ---- the overlap race, and the only place it can be won ---------
-                //
-                // Two requests for the same unit and overlapping window can both
-                // read "this slot is free" at the same instant, and there is
-                // nothing in the schema to stop the second insert: no unique
-                // constraint can express "no overlapping range" (MySQL has no
-                // exclusion constraint, and bookings legitimately overlap for
-                // different units of the same space).
-                //
-                // So the unit row is used as the mutex. `lockForUpdate` takes a
-                // row-level write lock that is held until the transaction ends,
-                // which serialises every booking attempt for this unit on this one
-                // row: the second transaction blocks on the lock, and when it is
-                // finally admitted the first booking is committed and therefore
-                // visible to the overlap query below, which then reports the slot
-                // as taken. The second caller gets 409, not a duplicate row and
-                // never a 500.
-                //
-                // The lock has to be taken BEFORE the overlap query, and it has to
-                // be the Unit row: locking `bookings` would be useless because the
-                // row that would have to block does not exist yet. One row is
-                // locked per transaction and it is locked first, so there is no
-                // lock-ordering cycle and no deadlock.
-                //
-                // Divergence to know about: SQLite ignores FOR UPDATE entirely (its
-                // grammar compiles the lock to nothing) and serialises writers at
-                // the file level instead, so the suite exercises the surrounding
-                // logic on SQLite and the locking itself only matters on MySQL.
                 $lockedUnit = Unit::whereKey($unit->id)->lockForUpdate()->first();
 
-                // The unit was deleted (its bookings cascade away with it) between
-                // resolving it and taking the lock.
                 if (! $lockedUnit) {
                     return ['gone' => true];
                 }
 
-                // Half-open comparison: an existing 10:00–13:00 booking conflicts
-                // with 09:00–11:00 and with 12:00–14:00, but a slot that starts
-                // exactly when it ends does not — the two never share a minute.
-                // Cancelled bookings release the slot, which is what makes
-                // cancelling and re-booking the same window work.
                 $conflict = Booking::where('unit_id', $lockedUnit->id)
                     ->where('status', '!=', 'cancelled')
                     ->where('start_datetime', '<', $end)
@@ -248,17 +155,9 @@ class BookingController extends Controller
                     'notes' => $validated['notes'] ?? null,
                 ]);
 
-                // GET /api/admin/bookings/{ref} looks the column up directly, so a
-                // booking stored without a ref can never be opened from the panel.
-                // The value is derived from the primary key, which is only known
-                // after the insert.
                 $booking->update(['ref' => Booking::generateRef($booking->id)]);
 
                 if ($idempotencyKey !== null) {
-                    // Inside the transaction on purpose: if the booking above is
-                    // rolled back, so is the claim on the key, and the retry is
-                    // free to succeed. The unique index on (user_id,
-                    // idempotency_key) is what makes this safe under concurrency.
                     DB::table('booking_idempotency_keys')->insert([
                         'user_id' => $userId,
                         'idempotency_key' => $idempotencyKey,
@@ -271,13 +170,6 @@ class BookingController extends Controller
                 return ['booking' => $booking];
             }, 3);
         } catch (QueryException $e) {
-            // The unique index rejected a concurrent request carrying the same
-            // Idempotency-Key. The transaction rolled back, so the booking this
-            // request was writing is gone and the winner's booking is the only
-            // one for that key — read it back and answer as a replay rather than
-            // letting a 500 escape. A duplicate-key error only surfaces once the
-            // winner has committed (the loser blocks on the index until then), so
-            // the row is readable here.
             $replay = $idempotencyKey !== null
                 ? $this->bookingForIdempotencyKey($userId, $idempotencyKey)
                 : null;
@@ -295,11 +187,6 @@ class BookingController extends Controller
             ], 422);
         }
 
-        // 409 and not 422: the payload was perfectly valid, the slot is simply
-        // taken. The frontend distinguishes the two — 409 means "pick another
-        // hour", 422 means "fix the form" — and collapsing them makes a taken
-        // slot look like a bug. Message only, no `errors` key: this is a
-        // business rule, exactly like OwnerSpaceController::destroy's 409.
         if (isset($result['conflict'])) {
             return response()->json([
                 'message' => 'الفترة المختارة محجوزة مسبقاً في هذه المساحة، يرجى اختيار وقت آخر.',
@@ -330,9 +217,6 @@ class BookingController extends Controller
      */
     public function cancel(Request $request, $id)
     {
-        // 404 for an id that does not exist, never 403. Answering 403 for a
-        // missing id would confirm the id belongs to a real booking, which turns
-        // this endpoint into a way to enumerate other customers' reservations.
         $booking = Booking::find($id);
 
         if (! $booking) {
@@ -341,9 +225,6 @@ class BookingController extends Controller
             ], 404);
         }
 
-        // Only the customer the booking was made for may cancel it. Checked after
-        // the 404 so nothing leaks, and before the status rules so a stranger
-        // cannot use the 409 to probe which of their bookings are already used.
         if ((int) $booking->user_id !== (int) $request->user()->id) {
             return response()->json([
                 'message' => 'لا يمكنك إلغاء حجز لا يخصك.',
@@ -352,10 +233,6 @@ class BookingController extends Controller
 
         $booking->loadMissing('unit.workspace.images');
 
-        // Idempotent on purpose. The customer taps "cancel" twice, or the app
-        // retries because the first response was lost. Both must succeed: the
-        // second tap has nothing left to do, and reporting it as an error would
-        // leave a cancelled booking on screen looking like a failed action.
         if ($booking->status === 'cancelled') {
             return response()->json([
                 'message' => 'الحجز ملغى مسبقاً.',
@@ -363,11 +240,6 @@ class BookingController extends Controller
             ], 200);
         }
 
-        // checked_in, completed and disputed describe a slot that was used or is
-        // under dispute. Unwinding one of those would contradict the owner's
-        // check-in, the revenue the workspace already reported, and any dispute
-        // opened against the booking. 409, not 422: the request was well formed,
-        // the booking's current state is what refuses it.
         if (! in_array($booking->status, ['pending', 'confirmed'], true)) {
             return response()->json([
                 'message' => 'لا يمكن إلغاء حجز بهذه الحالة.',
@@ -454,9 +326,6 @@ class BookingController extends Controller
             return null;
         }
 
-        // Validated through the validator rather than $request->validate(), which
-        // only reads the body, so the failure has Laravel's usual
-        // {message, errors:{…}} shape for a header the client controls.
         Validator::make(
             ['idempotency_key' => $key],
             ['idempotency_key' => ['required', 'string', 'max:255']],
@@ -534,8 +403,6 @@ class BookingController extends Controller
         $clock = substr(trim((string) $time), 0, 5);
 
         if (! preg_match('/^(\d{1,2}):(\d{2})$/', $clock, $matches)) {
-            // No usable opening hours recorded: the space cannot take a booking,
-            // and 0 would quietly widen the window to the whole day.
             return -1;
         }
 
@@ -600,10 +467,6 @@ class BookingController extends Controller
             ? round((float) $booking->total_price, 2)
             : null;
 
-        // Derived the same way total_price was computed rather than through
-        // Booking::getHoursAttribute(), which truncates with (int) diffInHours:
-        // a 90 minute booking would report 1 hour on screen while having been
-        // billed for 1.5.
         $hours = ($start !== null && $end !== null)
             ? round($start->diffInMinutes($end) / 60, 2)
             : null;

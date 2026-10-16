@@ -13,9 +13,7 @@ class ImageService
             return null;
         }
 
-        // Check if it's a data URL
         if (str_starts_with($base64String, 'data:image/')) {
-            // Extract MIME type and base64 data
             preg_match('/data:image\/([a-zA-Z0-9+\/]+);base64,(.+)/', $base64String, $matches);
 
             if (count($matches) !== 3) {
@@ -25,12 +23,10 @@ class ImageService
             $mimeType = $matches[1];
             $data = $matches[2];
         } else {
-            // Assume it's raw base64
             $data = $base64String;
             $mimeType = 'jpeg';
         }
 
-        // Map MIME type to file extension
         $extensions = [
             'jpeg' => 'jpg',
             'jpg' => 'jpg',
@@ -45,22 +41,19 @@ class ImageService
 
         $extension = $extensions[$mimeType];
 
-        // Decode image data
         $imageData = base64_decode($data, true);
 
         if ($imageData === false) {
             throw new \Exception('Failed to decode base64 image');
         }
 
-        // Validate file size (5MB max)
-        $maxSize = 5 * 1024 * 1024; // 5MB
+        $maxSize = 5 * 1024 * 1024;
         if (strlen($imageData) > $maxSize) {
             throw new \Exception('Image size exceeds maximum allowed size of 5MB');
         }
 
         $filename = $directory . '/' . Str::uuid() . '.' . $extension;
 
-        // Store on Cloudinary
         $path = Storage::disk('cloudinary')->put($filename, $imageData);
 
         return $path;

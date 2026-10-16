@@ -39,7 +39,6 @@ class GoogleAuthController extends Controller
         $user = User::where('google_id', $googleId)->orWhere('email', $email)->first();
 
         if ($user) {
-            // لو كان مسجل بالإيميل العادي وأول مرة يدخل بقوقل، اربط الحساب
             if (!$user->google_id) {
                 $user->update([
                     'google_id' => $googleId,
@@ -62,10 +61,6 @@ class GoogleAuthController extends Controller
             ]);
         }
 
-        // A new account is only created when the caller states which role it wants.
-        // Defaulting to `customer` here registered a stranger as a real customer
-        // the first time they ever signed in with Google, so an unrecognised
-        // Google identity now has to say what it is before it becomes an account.
         if (blank($request->input('role'))) {
             return response()->json([
                 'code' => 'NOT_REGISTERED',
@@ -75,8 +70,6 @@ class GoogleAuthController extends Controller
 
         $role = $request->input('role');
 
-        // Both roles register active. See AuthController::registerSpaceOwnerAccount:
-        // the listing is what waits for an admin, not the account.
         $status = 'active';
 
         $user = User::create([

@@ -14,14 +14,13 @@ return new class extends Migration
     {
         Schema::create('platform_settings', function (Blueprint $table) {
             $table->id();
-            $table->decimal('commission_rate', 5, 2)->default(12.00); // 12%
+            $table->decimal('commission_rate', 5, 2)->default(12.00);
             $table->integer('booking_grace_period_hours')->default(24);
             $table->boolean('auto_approve_bookings')->default(false);
             $table->string('currency')->default('ش.ج');
             $table->timestamps();
         });
 
-        // Insert default settings
         DB::table('platform_settings')->insert([
             'commission_rate' => 12.00,
             'booking_grace_period_hours' => 24,

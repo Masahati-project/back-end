@@ -14,7 +14,6 @@ class SendOfferRejectedNotification
      */
     public function __construct()
     {
-        //
     }
 
     /**

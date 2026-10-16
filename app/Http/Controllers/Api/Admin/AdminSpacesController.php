@@ -11,15 +11,28 @@ use Illuminate\Support\Facades\Storage;
 
 class AdminSpacesController extends Controller
 {
-    /**
-     * The four states a space can be in, in the order the admin queue shows them.
-     *
-     * Rejection and suspension are deliberately separate: a rejected space never
-     * went live, a suspended one did and can be brought back. Collapsing them —
-     * which is what the old `status` filter did, treating everything that was not
-     * "active" as one bucket — is what made the rejected queue unusable.
-     */
     public const STATUSES = ['pending', 'active', 'suspended', 'rejected'];
+
+    /**
+     * Correlated sub-selects for the two sorts, which are the reason they have to
+     * be written this way.
+     *
+     * Neither `rating` nor `price` is a column on `workspaces`: the average lives
+     * on `reviews.rating` and the hourly rate on `pricing.price`, reached through
+     * `units`. Ordering the outer `workspaces` query by either bare name compiled
+     * to `order by rating` / `order by price` against a table that has neither
+     * column, which is an "Unknown column" 500 — so `?sort=rating` and
+     * `?sort=price` took the whole admin queue down rather than sorting it.
+     *
+     * `pricing.price` is a string column, hence the `+ 0`: without it the
+     * comparison is a string sort, and SQLite orders by storage class where text
+     * always beats numeric, so the ordering silently depended on the engine.
+     * These are the same two expressions the public catalogue sorts on, so the
+     * admin queue and the catalogue agree on what "top rated" and "cheapest" mean.
+     */
+    private const HOURLY_PRICE_SQL = '(select min(pricing.price + 0) from pricing inner join units on units.id = pricing.unit_id where units.workspace_id = workspaces.id and pricing.price_type = ?)';
+
+    private const RATING_SQL = '(select avg(reviews.rating) from reviews where reviews.workspace_id = workspaces.id)';
 
     /**
      * Narrows a query to one lifecycle state.
@@ -83,10 +96,13 @@ class AdminSpacesController extends Controller
             $query->where('owner_id', $request->owner_id);
         }
 
+        // Neither sort key is a workspaces column, so both go through a
+        // correlated sub-select. Sorting on `rating` / `price` by their bare
+        // names was an "Unknown column" 500 on both counts.
         $sort = $request->get('sort', 'newest');
         match($sort) {
-            'rating' => $query->with('reviews')->orderByDesc('rating'),
-            'price' => $query->orderBy('price'),
+            'rating' => $query->orderByRaw(self::RATING_SQL . ' desc'),
+            'price' => $query->orderByRaw(self::HOURLY_PRICE_SQL . ' asc', ['hourly']),
             default => $query->orderBy('created_at', 'desc'),
         };
 
@@ -464,13 +480,23 @@ class AdminSpacesController extends Controller
      * admin queue showed a price and capacity for every listing, including the
      * ones that have neither — and hid the genuinely missing ones behind a
      * plausible-looking number.
+     *
+     * Ordered by `pricing.id`, not `pricing.created_at`. The `pricing` table is
+     * `id, unit_id, price_type, price, currency` — it carries no timestamp
+     * columns at all, so ordering by `created_at` was an "Unknown column" 500.
+     * `first()` always executes, so this threw on every listing whether or not
+     * the space had any pricing, which is what made the whole admin queue a
+     * 500: `index`, `show`, `update` and `export` all reach this helper through
+     * the formatters, while `stats` and `updateStatus` do not and kept working.
+     * `id` is the only monotonic column the table has and therefore the closest
+     * stand-in for insertion order.
      */
     private function spacePrice(Workspace $space): mixed
     {
         $pricing = $space->units()
             ->join('pricing', 'pricing.unit_id', '=', 'units.id')
             ->where('pricing.price_type', 'hourly')
-            ->orderByDesc('pricing.created_at')
+            ->orderByDesc('pricing.id')
             ->select('pricing.price')
             ->first();
 

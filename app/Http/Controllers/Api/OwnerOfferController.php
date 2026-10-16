@@ -35,7 +35,6 @@ class OwnerOfferController extends Controller
     private function formatOfferResponse(Offer $offer)
     {
         $requestTitle = $offer->specialRequest?->title ?? '';
-        // decimal:2 serialises as a string, so cast back for the UI.
         $price = $offer->price_per_hour !== null ? (float) $offer->price_per_hour : null;
 
         return [

@@ -41,7 +41,7 @@ class AdminOverviewController extends Controller
 
         $activeSpaces = Workspace::where('is_active', true)->count();
         $pendingSpaces = Workspace::where('is_active', false)->count();
-        $suspendedSpaces = 0; // TODO: add suspended status to workspaces
+        $suspendedSpaces = 0;
 
         return response()->json([
             'data' => [
@@ -71,9 +71,6 @@ class AdminOverviewController extends Controller
 
         $startDate = now()->subMonths($months - 1)->startOfMonth();
 
-        // DATE_FORMAT is MySQL-only; strftime is the SQLite equivalent. Pick the
-        // expression from the active driver so the test suite can run on SQLite
-        // while production keeps using the native MySQL function.
         $monthKeyExpression = DB::getDriverName() === 'mysql'
             ? "DATE_FORMAT(created_at, '%Y-%m')"
             : "strftime('%Y-%m', created_at)";

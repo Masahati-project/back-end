@@ -39,9 +39,6 @@ return new class extends Migration
             return;
         }
 
-        // Widen before rewriting: MySQL refuses to UPDATE a row into a value the
-        // column's current enum does not contain, so this ordering is required,
-        // not stylistic.
         if (DB::getDriverName() === 'mysql') {
             $states = implode(', ', array_map(fn ($s) => "'{$s}'", self::TARGET_STATES));
 
@@ -49,8 +46,6 @@ return new class extends Migration
                 "ALTER TABLE workspaces MODIFY COLUMN status ENUM({$states}) NOT NULL DEFAULT 'pending'"
             );
         } else {
-            // Laravel 11+ performs the change natively; on SQLite the grammar
-            // rebuilds the table to install the new check constraint.
             Schema::table('workspaces', function (Blueprint $table) {
                 $table->enum('status', self::TARGET_STATES)->default('pending')->change();
             });
@@ -65,8 +60,6 @@ return new class extends Migration
             return;
         }
 
-        // A suspended or rejected space has no meaning under the old enum, so
-        // they collapse back to pending rather than being silently dropped.
         DB::table('workspaces')->whereIn('status', ['suspended', 'rejected'])
             ->update(['status' => 'pending']);
 

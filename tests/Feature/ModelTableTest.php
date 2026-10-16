@@ -35,8 +35,6 @@ class ModelTableTest extends TestCase
                 continue;
             }
 
-            // Nothing under the resolved name. If the pluralised name exists
-            // then the model is missing a $table declaration.
             $declared = (new \ReflectionClass($model))->getDefaultProperties();
 
             if (Schema::hasTable($plural) && !array_key_exists('table', $declared)) {

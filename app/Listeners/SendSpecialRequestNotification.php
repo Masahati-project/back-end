@@ -15,7 +15,6 @@ class SendSpecialRequestNotification
      */
     public function __construct()
     {
-        //
     }
 
     /**
@@ -25,8 +24,6 @@ class SendSpecialRequestNotification
     {
         $specialRequest = $event->specialRequest;
 
-        // A new request in the market is relevant to every active space owner,
-        // not just the customer who raised it.
         $ownerIds = User::where('role', 'space_owner')
             ->where('status', 'active')
             ->whereNotNull('verified_at')

@@ -35,10 +35,6 @@ class AdminUsersTest extends TestCase
         return $user->createToken('auth_token')->plainTextToken;
     }
 
-    // -------------------------------------------------------------------------
-    // A4.3: documents on user detail
-    // -------------------------------------------------------------------------
-
     public function test_admin_user_detail_returns_documents_for_space_owner_with_document_files(): void
     {
         $admin = $this->createAdmin();
@@ -46,7 +42,6 @@ class AdminUsersTest extends TestCase
 
         $owner = $this->createOwner();
 
-        // Create a Document with files
         $document = Document::create([
             'user_id' => $owner->id,
             'status' => 'pending',
@@ -141,14 +136,11 @@ class AdminUsersTest extends TestCase
             'owner_id' => $owner->id,
             'title' => 'My Test Space',
             'location' => 'Ramallah',
-            // NOT NULL columns, so the fixture has to carry them like the rest of
-            // the suite's does.
             'latitude' => 31.9038,
             'longitude' => 35.2034,
             'contact_phone' => '0590000000',
             'status' => 'active',
             'is_active' => true,
-            // NOT NULL with no default, like latitude and contact_phone above.
             'is_closed' => false,
             'open_time' => '08:00:00',
             'close_time' => '22:00:00',
@@ -197,10 +189,6 @@ class AdminUsersTest extends TestCase
             $this->assertArrayNotHasKey('note', $doc);
         }
     }
-
-    // -------------------------------------------------------------------------
-    // A4.5: two-way verify
-    // -------------------------------------------------------------------------
 
     public function test_admin_verify_with_empty_body_on_unverified_user(): void
     {
@@ -282,10 +270,6 @@ class AdminUsersTest extends TestCase
             ->assertJsonValidationErrors(['verified']);
     }
 
-    // -------------------------------------------------------------------------
-    // A4.9: export
-    // -------------------------------------------------------------------------
-
     public function test_admin_users_export_unfiltered(): void
     {
         $admin = $this->createAdmin();
@@ -302,15 +286,11 @@ class AdminUsersTest extends TestCase
         $this->assertStringContainsString('attachment', $response->headers->get('Content-Disposition'));
 
         $body = $response->streamedContent();
-        // Starts with UTF-8 BOM
         $this->assertStringStartsWith("\xEF\xBB\xBF", $body);
 
-        // Header row exactly. The BOM sits on this same line — it is written
-        // immediately before the header — and is asserted above.
         $lines = explode("\r\n", $body);
         $this->assertSame('name,email,phone,role,status,verified,bookings,joined', ltrim($lines[0], "\xEF\xBB\xBF"));
 
-        // Two data rows + header = at least 3 lines
         $this->assertGreaterThanOrEqual(3, count($lines));
     }
 
@@ -330,8 +310,7 @@ class AdminUsersTest extends TestCase
         $body = $response->streamedContent();
         $lines = explode("\r\n", $body);
 
-        // Header + 1 owner row
-        $this->assertCount(3, $lines); // header, 1 data, empty trailing
+        $this->assertCount(3, $lines);
         $this->assertStringContainsString('Owner One', $lines[1]);
         $this->assertStringContainsString('space_owner', $lines[1]);
     }
@@ -352,10 +331,9 @@ class AdminUsersTest extends TestCase
         $body = $response->streamedContent();
         $lines = explode("\r\n", $body);
 
-        // Header + 1 unverified row
         $this->assertCount(3, $lines);
         $this->assertStringContainsString('Unverified', $lines[1]);
-        $this->assertStringContainsString(',0,', $lines[1]); // verified=0
+        $this->assertStringContainsString(',0,', $lines[1]);
     }
 
     public function test_admin_users_export_filtered_by_ids(): void
@@ -375,7 +353,6 @@ class AdminUsersTest extends TestCase
         $body = $response->streamedContent();
         $lines = explode("\r\n", $body);
 
-        // Header + 2 data rows
         $this->assertCount(4, $lines);
         $this->assertStringContainsString('User One', $lines[1]);
         $this->assertStringContainsString('User Three', $lines[2]);
@@ -400,7 +377,6 @@ class AdminUsersTest extends TestCase
         $body = $response->streamedContent();
         $lines = explode("\r\n", $body);
 
-        // The name field should be quoted and internal quotes doubled
         $this->assertStringContainsString('"Ali, ""Bob"""', $lines[1]);
     }
 
@@ -422,7 +398,6 @@ class AdminUsersTest extends TestCase
         $body = $response->streamedContent();
         $lines = explode("\r\n", $body);
 
-        // Should be prefixed with single quote
         $this->assertStringContainsString("'=SUM(1,2)", $lines[1]);
     }
 }

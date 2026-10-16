@@ -12,7 +12,6 @@ class BrevoMailService
      */
     public static function sendHtmlMail(string $toEmail, string $toName, string $subject, string $view, array $data = []): bool
     {
-        // رندر القالب لتحويله إلى HTML
         $htmlContent = View::make($view, $data)->render();
 
         $response = Http::withHeaders([

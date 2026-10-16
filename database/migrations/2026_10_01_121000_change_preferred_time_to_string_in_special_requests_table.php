@@ -13,9 +13,6 @@ return new class extends Migration
             return;
         }
 
-        // The frontend sends a human range such as "10:00 ص – 1:00 م", which the
-        // MySQL TIME column rejected with "Incorrect time value". The value is
-        // display text, not a clock, so it is stored as a string.
         Schema::table('special_requests', function (Blueprint $table) {
             $table->string('preferred_time', 120)->nullable()->change();
         });

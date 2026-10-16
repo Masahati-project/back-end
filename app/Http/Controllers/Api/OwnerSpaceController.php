@@ -117,8 +117,6 @@ class OwnerSpaceController extends Controller
             'active' => $byStatus['active'],
             'suspended' => $byStatus['suspended'],
             'rejected' => $byStatus['rejected'],
-            // Retained so an owner dashboard build still reading the old spelling
-            // keeps working; both now count the same rows.
             'approved' => $byStatus['active'],
             'listed' => $active,
             'inactive' => $inactive,
@@ -160,19 +158,12 @@ class OwnerSpaceController extends Controller
             'internet' => 'required|boolean',
             'power' => 'required|boolean',
             'image' => 'nullable|string',
-            // The proof file behind the listing — the deed or the lease — is part
-            // of creating the listing, not a later step. There is still
-            // POST /owner/spaces/{space}/documents for replacing it once the
-            // space exists, but a space cannot be created without one.
             'docs' => 'required|file|mimes:pdf,png,jpg,jpeg,webp|max:10240',
             'open_time' => 'required',
             'close_time' => 'required',
             'contact_phone' => 'required'
         ]);
 
-        // Storage being unreachable is a server fault, and this file is required:
-        // answering 201 with a null space_document_url would tell the owner their
-        // deed is on file when it is not.
         $proofPath = $request->file('docs')->store('documents', 'cloudinary');
 
         if (! $proofPath) {
@@ -397,9 +388,6 @@ class OwnerSpaceController extends Controller
             }
         }
 
-        // FormData cannot nest, so a client with a list of amenities sends it
-        // JSON-encoded. Note that appending the same key once per amenity does
-        // not survive: PHP keeps only the last value.
         if (is_string($request->input('amenities'))) {
             $decoded = json_decode($request->input('amenities'), true);
 
@@ -517,8 +505,6 @@ class OwnerSpaceController extends Controller
             'longitude' => $space->longitude,
             'image' => $image,
             'gallery' => $space->images->pluck('image_url')->toArray(),
-            // The proof file behind the listing, so the owner's own screen can
-            // show that the upload landed instead of assuming it did.
             'space_document_url' => $space->space_document_url,
             'price_per_hour' => $pricePerHour,
             'price' => $pricePerHour,

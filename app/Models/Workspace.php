@@ -60,7 +60,6 @@ class Workspace extends Model
         return $this->hasMany(Review::class);
     }
 
-    // Convenience: bookings through units
     public function bookings(): HasManyThrough
     {
         return $this->hasManyThrough(Booking::class, Unit::class);
@@ -68,8 +67,6 @@ class Workspace extends Model
 
     public function favoritedByUsers(): BelongsToMany
     {
-        // No ->using(Favorite::class): it routes attach() through a model save
-        // on a Pivot subclass, and the toggle endpoint no longer needs it.
         return $this->belongsToMany(User::class, 'favorites')->withTimestamps();
     }
 
@@ -107,8 +104,6 @@ class Workspace extends Model
 
     public function getStats()
     {
-        // bookings() is a HasManyThrough that joins units, and both tables have a
-        // status column, so the name has to be qualified or MySQL rejects it.
         $confirmedBookings = $this->bookings()
             ->where('bookings.status', 'confirmed')
             ->whereMonth('bookings.created_at', now()->month)

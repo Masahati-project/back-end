@@ -146,41 +146,21 @@ class ThrottleVerifiedAttempts
         $field = self::IDENTIFIER_FIELDS[$limiter] ?? null;
 
         if ($field === null) {
-            // Wiring mistake, not a client error. Throwing here is deliberate:
-            // silently passing every request through would be an unthrottled
-            // endpoint, and this fails loudly the first time it is exercised.
             throw new \InvalidArgumentException(
                 "Rate limiter [{$limiter}] has no identifier field configured on "
                 .self::class.'::IDENTIFIER_FIELDS.'
             );
         }
 
-        // Only the identifier field is checked here. The controllers keep their
-        // own full rule sets; duplicating them in a middleware would give the
-        // same validation two homes that drift apart, and the requirement is
-        // specifically that the *identifier* must be usable before the attempt
-        // counts.
         if (! $this->identifierIsUsable($request, $field)) {
-            // Untouched, unthrottled, no quota spent. The controller produces the
-            // 422 the caller expects.
             return $next($request);
         }
 
         $limit = $this->limitFor($limiter, $request);
 
-        // Read as properties, not methods. Illuminate\Cache\RateLimiting\Limit
-        // had maxAttempts() and decaySeconds() up to Laravel 10; from 11 on they
-        // are public properties and the methods are gone. Calling them is a
-        // fatal Error, which the handler renders as a 500 — so every request to
-        // /verify-otp, /resend-otp and /reset-password was answering 500 before
-        // reaching the controller, which is three dead endpoints rather than a
-        // broken rate limit. No test covered it because every test in this file
-        // was failing for the same reason and nobody could tell it apart.
         $maxAttempts = $limit->maxAttempts;
 
         if ($maxAttempts === PHP_INT_MAX) {
-            // Limit::none() — the limiter deliberately allows everything. Counting
-            // it here would turn "no limit" into an accidental lockout.
             return $next($request);
         }
 
@@ -191,14 +171,9 @@ class ThrottleVerifiedAttempts
             throw $this->throttleException($key, $maxAttempts, $decaySeconds);
         }
 
-        // attempt() runs the callback only while under the limit, mirroring what
-        // ThrottleRequests does internally.
         $response = RateLimiter::attempt($key, $maxAttempts, fn () => $next($request), $decaySeconds);
 
         if ($response === false) {
-            // Unreachable: the tooManyAttempts() call above already rejected this
-            // key. Kept so the declared Response return type is always honoured
-            // without running the pipeline a second time.
             throw $this->throttleException($key, $maxAttempts, $decaySeconds);
         }
 
@@ -230,20 +205,12 @@ class ThrottleVerifiedAttempts
      */
     protected function throttleException(string $key, int $maxAttempts, int $decaySeconds): ThrottleRequestsException
     {
-        // availableIn() is the number of seconds left before this bucket refills,
-        // which is the only accurate figure at this point. The configured decay
-        // window is the fallback for the corner case where the key expired
-        // between tooManyAttempts() and now.
         $retryAfter = RateLimiter::availableIn($key) ?: $decaySeconds;
 
         return new ThrottleRequestsException('Too Many Attempts.', null, [
             'X-RateLimit-Limit' => $maxAttempts,
             'X-RateLimit-Remaining' => 0,
             'Retry-After' => $retryAfter,
-            // Non-standard, and kept for parity with Laravel's own throttle
-            // headers: the absolute unix timestamp of the moment the bucket
-            // refills. Retry-After above is the standard header and the one the
-            // frontend reads.
             'X-RateLimit-Reset' => now()->addSeconds($retryAfter)->getTimestamp(),
         ]);
     }
@@ -256,9 +223,6 @@ class ThrottleVerifiedAttempts
      */
     protected function identifierIsUsable(Request $request, string $field): bool
     {
-        // Validating the single key instead of $request->all() keeps this to one
-        // rule with no database lookups and no possibility of colliding with the
-        // controller's rule set.
         return ! Validator::make(
             [$field => $request->input($field)],
             [$field => 'required|string|max:'.self::MAX_IDENTIFIER_LENGTH]
@@ -274,18 +238,10 @@ class ThrottleVerifiedAttempts
      */
     private static function normaliseIdentifier(mixed $value): string
     {
-        // Only a string can identify anybody. Casting an array to a string is a
-        // PHP warning, and Laravel converts warnings to ErrorExceptions, so a
-        // body like {"email": {"a": 1}} would have turned into a 500 instead of
-        // a 422 — the exact failure a peer agent shipped in the spaces filters.
-        // is_string() is the guard.
         if (! is_string($value)) {
             return self::IP_ONLY;
         }
 
-        // trim() for the whitespace padding; mb_strtolower() because the domain
-        // part of an email is case-insensitive and Str::uuid() emits lowercase,
-        // so one spelling means one bucket for both field types.
         $value = mb_strtolower(trim($value));
 
         if ($value === '') {
@@ -293,9 +249,6 @@ class ThrottleVerifiedAttempts
         }
 
         if (mb_strlen($value) > self::MAX_IDENTIFIER_LENGTH) {
-            // Shortening only — this is not anonymisation, because a 10 digit
-            // phone number is trivially recoverable from a digest. Its value is
-            // keeping the cache key within what Redis and memcached accept.
             return sha1($value);
         }
 

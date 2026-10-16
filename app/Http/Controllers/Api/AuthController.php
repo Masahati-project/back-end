@@ -44,11 +44,6 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'proof_document_url' => $request?->proof_document_url,
             'role' => 'space_owner',
-            // An owner is usable the moment the OTP is confirmed. What gets
-            // reviewed is the listing they create (`workspaces.status` starts at
-            // `pending`), not the account behind it, so registering the owner
-            // `pending` only produced accounts that could sign in and then do
-            // nothing at all.
             'status' => 'active',
             'otp' => hash('sha256', (string)$otp),
         ], now()->addMinutes(10));
@@ -134,8 +129,6 @@ class AuthController extends Controller
                 'message' => 'تم تسجيل دخولك بنجاح',
                 'token'   => $token,
                 'name'    => $user->full_name,
-                // Added so the client can route straight to the right dashboard
-                // instead of issuing a second request to /api/profile.
                 'user'    => [
                     'id'    => $user->id,
                     'name'  => $user->full_name,

@@ -102,8 +102,6 @@ class AdminOwnerDocumentsController extends Controller
             ->orderByDesc('id')
             ->first();
 
-        // Approving an owner who submitted nothing would clear them on the
-        // strength of nothing at all.
         if ($status === 'approved' && (! $document || $document->files->isEmpty())) {
             return response()->json([
                 'message' => 'لا توجد مستندات مرفوعة واعتمادها.',
@@ -117,9 +115,6 @@ class AdminOwnerDocumentsController extends Controller
             'reviewed_at' => now(),
         ]);
 
-        // Approving the document also lifts an account the admin had suspended,
-        // so the two rows cannot end up saying opposite things. For the usual
-        // case — an owner who registered active — this write changes nothing.
         if ($status === 'approved') {
             $user->forceFill([
                 'status' => 'active',

@@ -76,9 +76,6 @@ class ThrottleSpaceCreation
         $maxAttempts = $limit->maxAttempts;
         $key = $this->bucketKey($limit, $request);
 
-        // Limit::none() means "no limit", and remaining() against PHP_INT_MAX
-        // reads as zero attempts left. Counting that as a lockout would turn the
-        // escape hatch into the opposite of what it is for.
         if ($maxAttempts !== PHP_INT_MAX && RateLimiter::remaining($key, $maxAttempts) <= 0) {
             throw $this->throttleException($key, $maxAttempts, $limit->decaySeconds);
         }
@@ -89,10 +86,6 @@ class ThrottleSpaceCreation
             RateLimiter::hit($key, $limit->decaySeconds);
         }
 
-        // Reported on the way out too, so a client can grey out the button before
-        // it trips rather than after. Same header names Laravel's own throttle
-        // middleware uses. Set one at a time: HeaderBag::set() returns void, so
-        // these cannot be chained.
         $response->headers->set('X-RateLimit-Limit', (string) $maxAttempts);
         $response->headers->set('X-RateLimit-Remaining', (string) RateLimiter::remaining($key, $maxAttempts));
         $response->headers->set('X-RateLimit-Reset', (string) now()->addSeconds($limit->decaySeconds)->getTimestamp());
@@ -150,19 +143,12 @@ class ThrottleSpaceCreation
      */
     protected function throttleException(string $key, int $maxAttempts, int $decaySeconds): ThrottleRequestsException
     {
-        // availableIn() is exact only when the bucket carries a timer key, which
-        // RateLimiter::hit() does not write, so it reads 0 here and the decay
-        // window stands in. For a per-minute rule that is the same number, and
-        // it is what Laravel's own throttle middleware falls back to.
         $retryAfter = RateLimiter::availableIn($key) ?: $decaySeconds;
 
         return new ThrottleRequestsException('Too Many Attempts.', null, [
             'X-RateLimit-Limit' => $maxAttempts,
             'X-RateLimit-Remaining' => 0,
             'Retry-After' => $retryAfter,
-            // Non-standard, and kept for parity with Laravel's own throttle
-            // headers: the absolute unix timestamp of the moment the bucket
-            // refills.
             'X-RateLimit-Reset' => now()->addSeconds($retryAfter)->getTimestamp(),
         ]);
     }

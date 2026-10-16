@@ -69,16 +69,8 @@ class OwnerSpaceTest extends TestCase
             ));
     }
 
-    // -------------------------------------------------------------------------
-    // Schema
-    // -------------------------------------------------------------------------
-
     public function test_space_document_url_column_is_nullable(): void
     {
-        // The production 500 came from a NOT NULL column with no default, which
-        // MySQL strict mode rejects with error 1364. The create path always
-        // fills it now, but the column stays nullable so the other writers of a
-        // workspace row cannot be broken by a schema that assumes one.
         foreach (Schema::getColumns('workspaces') as $column) {
             if ($column['name'] === 'space_document_url') {
                 $this->assertTrue((bool) $column['nullable'], 'space_document_url must be nullable');
@@ -88,10 +80,6 @@ class OwnerSpaceTest extends TestCase
 
         $this->fail('workspaces.space_document_url column is missing');
     }
-
-    // -------------------------------------------------------------------------
-    // POST /api/owner/spaces
-    // -------------------------------------------------------------------------
 
     public function test_owner_can_create_a_space(): void
     {
@@ -104,9 +92,6 @@ class OwnerSpaceTest extends TestCase
         $space = Workspace::firstWhere('title', 'مساحة الاختبار');
         $this->assertNotNull($space, 'the workspace was not persisted');
 
-        // open_time / close_time are asserted on the model, not on the payload:
-        // the insert used to carry a typo'd "opne_time" key, which silently left
-        // the column empty and made MySQL reject the whole row.
         $this->assertSame('08:00', $this->normalizeTime($space->open_time));
         $this->assertSame('22:00', $this->normalizeTime($space->close_time));
         $this->assertSame($owner->id, $space->owner_id);
@@ -117,8 +102,6 @@ class OwnerSpaceTest extends TestCase
         $this->assertSame('pending', $space->status);
         $this->assertFalse((bool) $space->is_closed);
 
-        // Assert the raw stored values too, so a silently dropped column cannot
-        // hide behind Eloquent's cast layer.
         $raw = DB::table('workspaces')->where('id', $space->id)->first();
         $this->assertSame('08:00', $this->normalizeTime($raw->open_time));
         $this->assertSame('22:00', $this->normalizeTime($raw->close_time));
@@ -127,8 +110,6 @@ class OwnerSpaceTest extends TestCase
 
     public function test_a_space_cannot_be_created_without_its_document(): void
     {
-        // The deed or lease is part of the listing, so an empty `docs` is a 422
-        // and nothing is written — not a listing the admin has nothing to review.
         $owner = $this->owner();
 
         $this->createSpace($owner, [], [])
@@ -140,10 +121,6 @@ class OwnerSpaceTest extends TestCase
 
     public function test_the_uploaded_document_is_stored_on_the_listing(): void
     {
-        // The file used to be written to Cloudinary and then dropped, because the
-        // create read `$validated['space_document_url']` while the upload had
-        // been merged into the request under a different key. space_document_url
-        // came back null and the owner was told nothing.
         $owner = $this->owner();
 
         $this->createSpace($owner)->assertStatus(201);
@@ -154,8 +131,6 @@ class OwnerSpaceTest extends TestCase
 
         Storage::disk('cloudinary')->assertExists($space->space_document_url);
 
-        // Echoed back so the owner's own screen can confirm the upload landed
-        // rather than assuming it did.
         $this->assertSame(
             $space->space_document_url,
             $this->withToken($this->token($owner))
@@ -166,7 +141,6 @@ class OwnerSpaceTest extends TestCase
 
     public function test_a_document_of_an_unaccepted_type_is_rejected(): void
     {
-        // An .exe or a text file is not a deed, and it must not reach storage.
         $owner = $this->owner();
 
         $this->createSpace($owner, [], [
@@ -201,7 +175,6 @@ class OwnerSpaceTest extends TestCase
             ->assertJsonPath('space.capacity', 4)
             ->assertJsonPath('space.status', 'pending');
 
-        // Pricing casts price as decimal:2, so it comes back as "50.00".
         $this->assertEqualsWithDelta(
             50.0,
             (float) $response->json('space.price_per_hour'),
@@ -235,10 +208,6 @@ class OwnerSpaceTest extends TestCase
 
     public function test_owner_needs_no_admin_approval_to_create_a_space(): void
     {
-        // What waits for an admin is the listing, not the owner. Owners used to
-        // register `pending` and POST /owner/spaces was gated on an approved
-        // proof document, so a brand-new owner could sign in and do nothing at
-        // all — this owner is `active` with no Document row and must get a 201.
         $owner = $this->owner();
 
         $this->assertNull(Document::where('user_id', $owner->id)->first());
@@ -250,19 +219,12 @@ class OwnerSpaceTest extends TestCase
         $space = Workspace::firstWhere('title', 'مساحة الاختبار');
         $this->assertNotNull($space);
 
-        // Created pending and not live: the admin activates it, and only an
-        // active listing reaches the public catalogue.
         $this->assertSame('pending', $space->status);
         $this->assertFalse((bool) $space->is_active);
     }
 
     public function test_multipart_string_flags_and_json_amenities_are_accepted(): void
     {
-        // The realistic request shape: `docs` is required, so the create call is
-        // always multipart, which means `internet` arrives as the string "true"
-        // and `amenities` as a JSON string. `boolean` takes neither as sent, so
-        // the coercing in normalizeListingPayload() is load-bearing rather than
-        // defensive — without it no client could ever create a space.
         $owner = $this->owner();
 
         $this->createSpace($owner, [
@@ -274,7 +236,6 @@ class OwnerSpaceTest extends TestCase
         $space = Workspace::firstWhere('title', 'مساحة الاختبار');
         $this->assertNotNull($space);
 
-        // The coerced flags reach the unit rather than merely passing validation.
         $unit = Unit::where('workspace_id', $space->id)->first();
         $this->assertNotNull($unit);
         $this->assertTrue((bool) $unit->has_wifi);
@@ -289,7 +250,6 @@ class OwnerSpaceTest extends TestCase
     {
         $owner = $this->owner();
 
-        // Dropping open_time must stay a 422, not a 500.
         $this->createSpace($owner, ['open_time' => null])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['open_time']);
@@ -301,16 +261,10 @@ class OwnerSpaceTest extends TestCase
     {
         $customer = User::factory()->create(['role' => 'customer']);
 
-        // A complete request, file included: the 403 has to be about the role,
-        // not about a missing document the role check happens to run before.
         $this->createSpace($customer)->assertStatus(403);
 
         $this->assertDatabaseCount('workspaces', 0);
     }
-
-    // -------------------------------------------------------------------------
-    // POST /api/owner/spaces — creation rate limit
-    // -------------------------------------------------------------------------
 
     public function test_an_owner_can_create_at_most_two_spaces_a_minute(): void
     {
@@ -324,7 +278,6 @@ class OwnerSpaceTest extends TestCase
             ->assertStatus(201)
             ->assertHeader('X-RateLimit-Remaining', '0');
 
-        // The third is refused before the controller runs, so nothing is written.
         $this->createSpace($owner)
             ->assertStatus(429)
             ->assertHeader('X-RateLimit-Remaining', '0')
@@ -335,9 +288,6 @@ class OwnerSpaceTest extends TestCase
 
     public function test_a_rejected_submission_does_not_spend_the_quota(): void
     {
-        // A 422 creates no space, so it must not cost one of the two. Counting
-        // every arrival meant a user who corrected a typo twice in a minute was
-        // locked out of their own form.
         $owner = $this->owner();
 
         $this->createSpace($owner, ['open_time' => null])->assertStatus(422);
@@ -353,9 +303,6 @@ class OwnerSpaceTest extends TestCase
 
     public function test_the_quota_is_per_owner_and_not_per_address(): void
     {
-        // Every request in this file comes from the same address, which is the
-        // point: one office behind a single NAT, or one carrier CGNAT range, must
-        // not spend every user behind it their own quota.
         $first = $this->owner();
         $second = $this->owner();
 
@@ -363,21 +310,12 @@ class OwnerSpaceTest extends TestCase
         $this->createSpace($first)->assertStatus(201);
         $this->createSpace($first)->assertStatus(429);
 
-        // One application serves every request made inside a single test, so the
-        // sanctum guard has already cached the first owner. RequestGuard::user()
-        // returns that cached user for the rest of the test, which would make
-        // this test measure one account twice and pass for the wrong reason — or
-        // fail, as it did, while the limiter was behaving perfectly.
         Auth::forgetGuards();
 
         $this->createSpace($second)->assertStatus(201);
 
         $this->assertDatabaseCount('workspaces', 3);
     }
-
-    // -------------------------------------------------------------------------
-    // PUT /api/owner/spaces/{id} — shares the amenity resolution helper
-    // -------------------------------------------------------------------------
 
     public function test_owner_can_update_a_space_and_sync_new_amenities(): void
     {

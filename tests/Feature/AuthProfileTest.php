@@ -17,10 +17,6 @@ class AuthProfileTest extends TestCase
         return User::factory()->create($overrides);
     }
 
-    // -------------------------------------------------------------------------
-    // deleteAccount
-    // -------------------------------------------------------------------------
-
     public function test_delete_account_removes_user_and_tokens(): void
     {
         Storage::fake('cloudinary');
@@ -77,10 +73,6 @@ class AuthProfileTest extends TestCase
         $this->deleteJson('/api/delete-user')->assertStatus(401);
     }
 
-    // -------------------------------------------------------------------------
-    // uploadPicture
-    // -------------------------------------------------------------------------
-
     public function test_upload_picture_stores_image_and_returns_url(): void
     {
         Storage::fake('cloudinary');
@@ -135,7 +127,7 @@ class AuthProfileTest extends TestCase
         $user  = $this->createUser();
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        $file = UploadedFile::fake()->image('large.jpg')->size(3000); // 3 MB
+        $file = UploadedFile::fake()->image('large.jpg')->size(3000);
 
         $this->withToken($token)
             ->postJson('/api/uploadPicture', ['profile_picture' => $file])
@@ -147,10 +139,6 @@ class AuthProfileTest extends TestCase
     {
         $this->postJson('/api/uploadPicture', [])->assertStatus(401);
     }
-
-    // -------------------------------------------------------------------------
-    // updateProfilePicture
-    // -------------------------------------------------------------------------
 
     public function test_update_profile_picture_replaces_old_image(): void
     {

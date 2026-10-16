@@ -43,7 +43,7 @@ class ProfileController extends Controller
             $data['proof_document_url'] = $path;
         }
 
-        unset($data['proof_document']); // never mass-assign the raw file
+        unset($data['proof_document']);
 
         return $this->updateProfile($request, $data);
     }
@@ -57,8 +57,6 @@ class ProfileController extends Controller
     {
         $request->validate([
             'profile_picture' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048'
-                // Additional security: validate MIME type and extension match
-                // File content validation should be done at storage level
         ]);
 
         $user = $request->user();
@@ -131,7 +129,6 @@ class ProfileController extends Controller
         ]);
 
         if (Hash::check($request->oldPassword, $user->password)) {
-            // Invalidate all existing tokens for security
             $user->tokens()->delete();
 
             $status = $user->forceFill([
@@ -139,7 +136,6 @@ class ProfileController extends Controller
             ]);
             $user->save();
 
-            // Generate new token after password change
             $newToken = $user->createToken('auth_token')->plainTextToken;
 
             if ($status) {

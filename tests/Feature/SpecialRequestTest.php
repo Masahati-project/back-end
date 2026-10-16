@@ -52,8 +52,6 @@ class SpecialRequestTest extends TestCase
             'is_closed' => false,
         ]);
 
-        // Accepting an offer books the workspace's first unit, so every test
-        // workspace needs one.
         Unit::create([
             'workspace_id' => $workspace->id,
             'type' => 'desk',
@@ -78,18 +76,12 @@ class SpecialRequestTest extends TestCase
         ], $overrides));
     }
 
-    // -------------------------------------------------------------------------
-    // GET /api/special-requests/open
-    // -------------------------------------------------------------------------
-
     public function test_open_requests_returns_200_json_list_for_authenticated_owner(): void
     {
         $owner = $this->owner();
         $customer = $this->customer();
         $specialRequest = $this->requestFrom($customer);
 
-        // This is the regression that broke the owner's Market tab: the literal
-        // segment "open" used to be captured by /{requestId} and 404'd.
         $response = $this->withToken($this->token($owner))
             ->getJson('/api/special-requests/open');
 
@@ -130,15 +122,10 @@ class SpecialRequestTest extends TestCase
 
     public function test_literal_open_does_not_collide_with_show_route(): void
     {
-        // A non-numeric id must never reach the show() lookup.
         $this->withToken($this->token($this->owner()))
             ->getJson('/api/special-requests/not-a-number')
             ->assertStatus(404);
     }
-
-    // -------------------------------------------------------------------------
-    // POST /api/special-requests/{requestId}/offers
-    // -------------------------------------------------------------------------
 
     public function test_owner_can_submit_an_offer(): void
     {
@@ -202,8 +189,6 @@ class SpecialRequestTest extends TestCase
             ])
             ->assertStatus(201);
 
-        // The frontend hides the button after the first attempt; the backend
-        // rule is the source of truth.
         $this->withToken($this->token($owner))
             ->postJson("/api/special-requests/{$specialRequest->id}/offers", [
                 'space_id' => $workspace->id,
@@ -302,10 +287,6 @@ class SpecialRequestTest extends TestCase
         $this->postJson('/api/special-requests/1/offers', [])->assertStatus(401);
     }
 
-    // -------------------------------------------------------------------------
-    // Accept / reject
-    // -------------------------------------------------------------------------
-
     public function test_accept_offer_updates_the_offer_and_the_request(): void
     {
         $customer = $this->customer();
@@ -388,8 +369,6 @@ class SpecialRequestTest extends TestCase
 
     public function test_reject_offer_leaves_the_request_open(): void
     {
-        // Previously this wrote status="rejected" into an enum that only allowed
-        // open/accepted/closed, which is a hard SQL error on MySQL.
         $customer = $this->customer();
         $owner = $this->owner();
         $specialRequest = $this->requestFrom($customer);
@@ -463,10 +442,6 @@ class SpecialRequestTest extends TestCase
         $this->assertDatabaseHas('special_requests', ['id' => $specialRequest->id, 'status' => 'closed']);
     }
 
-    // -------------------------------------------------------------------------
-    // Notifications
-    // -------------------------------------------------------------------------
-
     public function test_mark_all_as_read_accepts_patch(): void
     {
         $user = $this->customer();
@@ -492,10 +467,6 @@ class SpecialRequestTest extends TestCase
             ->postJson('/api/notifications/read')
             ->assertStatus(200);
     }
-
-    // -------------------------------------------------------------------------
-    // Status codes and document shape
-    // -------------------------------------------------------------------------
 
     public function test_get_profile_returns_200(): void
     {
@@ -536,8 +507,6 @@ class SpecialRequestTest extends TestCase
 
         $response->assertStatus(200);
 
-        // Asserted on the raw body: decoding turns both {} and [] into an empty
-        // PHP array, so json() cannot tell the two apart.
         $this->assertStringContainsString('"files":{}', $response->getContent());
     }
 
@@ -583,14 +552,8 @@ class SpecialRequestTest extends TestCase
         $this->assertNull($payload['admin_note']);
     }
 
-    // -------------------------------------------------------------------------
-    // SPECIAL REQUESTS — contract from SPECIAL_REQUESTS_API_REQUIREMENTS.md
-    // -------------------------------------------------------------------------
-
     public function test_accept_offer_creates_a_booking_and_returns_it(): void
     {
-        // The frontend reads a top-level `booking` key; without it the booking
-        // never shows up in the customer's list.
         $customer = $this->customer();
         $owner = $this->owner();
         $specialRequest = $this->requestFrom($customer);
@@ -624,8 +587,6 @@ class SpecialRequestTest extends TestCase
 
     public function test_the_booking_from_an_accepted_offer_gets_a_reference(): void
     {
-        // GET /api/admin/bookings/{ref} looks the column up directly, so a
-        // booking saved without a ref can never be opened from the admin panel.
         $customer = $this->customer();
         $owner = $this->owner();
         $specialRequest = $this->requestFrom($customer);
@@ -650,8 +611,6 @@ class SpecialRequestTest extends TestCase
 
     public function test_an_admin_can_open_a_booking_by_its_reference(): void
     {
-        // Split from the accept test on purpose: withToken() cannot replace a
-        // bearer token that is already set on the test case.
         $admin = User::factory()->create(['role' => 'admin']);
         $unit = $this->workspaceFor($this->owner())->units()->first();
         $user = $this->customer();
@@ -674,7 +633,6 @@ class SpecialRequestTest extends TestCase
             ->assertJsonPath('data.id', $booking->id)
             ->assertJsonPath('data.ref', 'BK-4242');
 
-        // Rows written while refs still carried a "#" stay reachable.
         $legacy = Booking::create([
             'ref' => '#BK-7777',
             'user_id' => $user->id,
@@ -690,11 +648,6 @@ class SpecialRequestTest extends TestCase
             ->assertStatus(200)
             ->assertJsonPath('data.id', $legacy->id);
     }
-
-    // -------------------------------------------------------------------------
-    // Backfill of historic refs — see the migration that these tests drive:
-    // database/migrations/2026_10_01_130000_backfill_missing_booking_and_dispute_refs.php
-    // -------------------------------------------------------------------------
 
     /**
      * Run the backfill migration the way `php artisan migrate` would.
@@ -751,8 +704,6 @@ class SpecialRequestTest extends TestCase
 
     public function test_the_backfill_fills_missing_booking_and_dispute_references(): void
     {
-        // The admin detail endpoints resolve a ref straight out of the URL, so
-        // a NULL ref means the row can never be opened from the panel.
         $this->allowNullDisputeRefs();
 
         $user = $this->customer();
@@ -765,12 +716,9 @@ class SpecialRequestTest extends TestCase
 
         $this->runRefBackfill();
 
-        // No "#" prefix: a "#" in a path segment is read as the start of the
-        // fragment and stripped by the client before the request is sent.
         $this->assertSame('BK-' . $nullBooking->id, $nullBooking->fresh()->ref);
         $this->assertSame('BK-' . $blankBooking->id, $blankBooking->fresh()->ref);
 
-        // Dispute ids are padded to three digits.
         $this->assertSame('DIS-' . str_pad((string) $nullDispute->id, 3, '0', STR_PAD_LEFT), $nullDispute->fresh()->ref);
         $this->assertSame('DIS-' . str_pad((string) $blankDispute->id, 3, '0', STR_PAD_LEFT), $blankDispute->fresh()->ref);
 
@@ -780,8 +728,6 @@ class SpecialRequestTest extends TestCase
 
     public function test_the_backfill_pads_dispute_ids_to_three_digits(): void
     {
-        // id 1 must become DIS-001 and id 11 must become DIS-011 — not DIS-1,
-        // not DIS-11, not DIS-00011.
         $this->allowNullDisputeRefs();
 
         $user = $this->customer();
@@ -819,8 +765,6 @@ class SpecialRequestTest extends TestCase
 
         $this->runRefBackfill();
 
-        // A second pass finds no NULL / '' row left to write, so every ref —
-        // backfilled or pre-existing — is byte for byte what it was.
         $this->assertSame($afterFirstRun['bookings'], Booking::orderBy('id')->pluck('ref', 'id')->all());
         $this->assertSame($afterFirstRun['disputes'], Dispute::orderBy('id')->pluck('ref', 'id')->all());
 
@@ -831,8 +775,6 @@ class SpecialRequestTest extends TestCase
 
     public function test_the_backfill_leaves_a_legacy_hash_prefixed_reference_alone(): void
     {
-        // Rows written while refs still carried a "#" must keep it: the panel
-        // already links to them, and the controllers accept both spellings.
         $admin = User::factory()->create(['role' => 'admin']);
         $user = $this->customer();
         $unit = $this->workspaceFor($this->owner())->units()->first();
@@ -845,7 +787,6 @@ class SpecialRequestTest extends TestCase
         $this->assertSame('#BK-7777', $legacy->fresh()->ref);
         $this->assertSame('BK-' . $missing->id, $missing->fresh()->ref);
 
-        // Still resolvable through the endpoint, under both spellings.
         $token = $this->token($admin);
 
         $this->withToken($token)
@@ -928,8 +869,6 @@ class SpecialRequestTest extends TestCase
 
     public function test_show_returns_the_offers_array(): void
     {
-        // Without a populated offers array the customer sees an empty list with
-        // no error to explain it.
         $customer = $this->customer();
         $specialRequest = $this->requestFrom($customer);
         $workspace = $this->workspaceFor($this->owner());
@@ -1008,7 +947,6 @@ class SpecialRequestTest extends TestCase
 
     public function test_store_accepts_a_human_readable_preferred_time(): void
     {
-        // The docs show "10:00 ص – 1:00 م", which a date_format:H:i rule rejects.
         $response = $this->withToken($this->token($this->customer()))
             ->postJson('/api/special-requests', [
                 'title' => 'قاعة محاضرات',

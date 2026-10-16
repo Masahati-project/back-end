@@ -12,16 +12,11 @@ return new class extends Migration
             return;
         }
 
-        // The frontend expects `closed` for offers that were still pending when
-        // the customer closed the request. The original enum only allowed
-        // pending/accepted/rejected, so writing `closed` failed on MySQL.
         if (DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE offers MODIFY COLUMN status ENUM('pending', 'accepted', 'rejected', 'closed') NOT NULL DEFAULT 'pending'");
             return;
         }
 
-        // SQLite has no MODIFY COLUMN, and Laravel encodes enum as a CHECK
-        // constraint, so the table has to be rebuilt to widen the allowed set.
         if (DB::getDriverName() === 'sqlite') {
             DB::statement("PRAGMA foreign_keys=OFF");
 
@@ -56,7 +51,6 @@ return new class extends Migration
     public function down(): void
     {
         if (DB::getDriverName() === 'mysql' && Schema::hasTable('offers')) {
-            // Fold any closed offers back to rejected so the narrower enum fits.
             DB::table('offers')->where('status', 'closed')->update(['status' => 'rejected']);
             DB::statement("ALTER TABLE offers MODIFY COLUMN status ENUM('pending', 'accepted', 'rejected') NOT NULL DEFAULT 'pending'");
         }

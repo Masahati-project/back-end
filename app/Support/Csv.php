@@ -22,27 +22,16 @@ class Csv
      */
     public static function field(mixed $value): string
     {
-        // Null or empty → empty string
         if ($value === null || $value === '') {
             return '';
         }
 
-        // Cast scalars to string
         $s = (string) $value;
 
-        // Formula-injection guard runs on the RAW value, before RFC 4180 quoting.
-        //
-        // It used to run afterwards and inspect the first character of the
-        // already-escaped string, which meant any value that needed quoting —
-        // precisely the ones containing a comma, a quote, CR or LF, and so
-        // precisely the interesting ones — began with `"` and slipped through.
-        // `=SUM(1,2)` was exported as `"=SUM(1,2)"` and Excel still evaluated it
-        // on open. The guard has to see what the cell will actually start with.
         if ($s !== '' && preg_match('/^[=+\-@\t\r]/', $s)) {
             $s = "'" . $s;
         }
 
-        // RFC 4180: wrap if contains comma, double quote, CR or LF
         if (preg_match('/[",\r\n]/', $s)) {
             return '"' . str_replace('"', '""', $s) . '"';
         }
@@ -62,13 +51,10 @@ class Csv
      */
     public static function body(array $header, iterable $rows): string
     {
-        // UTF-8 BOM
         $out = "\xEF\xBB\xBF";
 
-        // Header row
         $out .= implode(',', array_map([self::class, 'field'], $header)) . "\r\n";
 
-        // Data rows
         foreach ($rows as $row) {
             $out .= implode(',', array_map([self::class, 'field'], $row)) . "\r\n";
         }
@@ -90,9 +76,6 @@ class Csv
      */
     public static function download(string $filename, array $header, iterable $rows)
     {
-        // Escape filename for Content-Disposition (RFC 5987 / RFC 6266)
-        // We use a simple approach: replace " with \", and if it contains
-        // non-ASCII we would need RFC 5987 encoding, but our filenames are ASCII.
         $safeFilename = str_replace('"', '\\"', $filename);
 
         return response()->stream(function () use ($header, $rows) {

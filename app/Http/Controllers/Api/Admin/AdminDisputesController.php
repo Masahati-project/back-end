@@ -21,7 +21,6 @@ class AdminDisputesController extends Controller
         $bare = ltrim($ref, '#');
         $candidates = [$bare, '#' . $bare];
 
-        // The panel may show the bare number, so "7" and "007" also resolve.
         if (ctype_digit($bare)) {
             $candidates[] = 'DIS-' . str_pad($bare, 3, '0', STR_PAD_LEFT);
             $candidates[] = '#DIS-' . str_pad($bare, 3, '0', STR_PAD_LEFT);

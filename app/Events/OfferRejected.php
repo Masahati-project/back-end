@@ -19,7 +19,6 @@ class OfferRejected
      */
     public function __construct(public SpecialRequest $specialRequest, public Offer $offer)
     {
-        //
     }
 
     /**

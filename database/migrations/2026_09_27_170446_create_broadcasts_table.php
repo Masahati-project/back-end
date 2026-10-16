@@ -17,7 +17,7 @@ return new class extends Migration
             $table->text('body');
             $table->enum('target', ['all', 'owners', 'freelancers']);
             $table->string('link', 300)->nullable();
-            $table->json('channels'); // ["in_app", "email"]
+            $table->json('channels');
             $table->integer('total')->default(0);
             $table->integer('opened')->default(0);
             $table->foreignId('sent_by')->constrained('users');

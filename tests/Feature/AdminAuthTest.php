@@ -27,10 +27,6 @@ class AdminAuthTest extends TestCase
         return $user->createToken('auth_token')->plainTextToken;
     }
 
-    // -------------------------------------------------------------------------
-    // POST /api/admin/profile/picture
-    // -------------------------------------------------------------------------
-
     public function test_an_admin_can_upload_a_profile_picture(): void
     {
         Storage::fake('cloudinary');
@@ -135,7 +131,7 @@ class AdminAuthTest extends TestCase
         $admin = $this->createAdmin();
         $token = $this->token($admin);
 
-        $file = UploadedFile::fake()->image('large.jpg')->size(3000); // 3 MB
+        $file = UploadedFile::fake()->image('large.jpg')->size(3000);
 
         $this->withToken($token)
             ->postJson('/api/admin/profile/picture', ['profile_picture' => $file])

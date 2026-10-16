@@ -15,7 +15,6 @@ $user = getenv('DB_USERNAME') ?: 'root';
 $pass = getenv('DB_PASSWORD') ?: '';
 $testDb = getenv('DB_TEST_DATABASE') ?: 'masahati_testing';
 
-// Refuse to run if someone points this at the production database name.
 $prodDb = getenv('DB_DATABASE') ?: '';
 if ($testDb === $prodDb && $prodDb !== '') {
     fwrite(STDERR, "REFUSING: DB_TEST_DATABASE equals the production database name.\n");
@@ -51,8 +50,6 @@ $env = [
     'DB_PASSWORD'  => $pass,
 ];
 
-// The child process needs the same connection, otherwise artisan would fall
-// back to the .env values and migrate the wrong database.
 $prefix = '';
 foreach ($env as $k => $v) {
     $prefix .= $k . '=' . escapeshellarg($v) . ' ';

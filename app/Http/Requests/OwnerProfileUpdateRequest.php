@@ -32,7 +32,7 @@ class OwnerProfileUpdateRequest extends FormRequest
                 'required',
                 'file',
                 'mimes:pdf,jpg,jpeg,png',
-                'max:5120', // 5MB
+                'max:5120',
             ],
         ];
     }

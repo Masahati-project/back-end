@@ -83,15 +83,9 @@ trait ResolvesAdExpiry
             $value = $schedule[$key];
 
             if ($value instanceof DateTimeInterface) {
-                // Only reachable when a model was handed a Carbon in memory rather
-                // than read back from the JSON column; instance() keeps the instant
-                // and the offset intact.
                 return Carbon::instance($value);
             }
 
-            // A blank or non-string value carries no date. An empty string must be
-            // skipped rather than parsed: Carbon::parse('') resolves to "now", which
-            // would expire the ad immediately.
             if (!is_string($value) || trim($value) === '') {
                 continue;
             }
@@ -99,9 +93,6 @@ trait ResolvesAdExpiry
             try {
                 return Carbon::parse($value);
             } catch (Throwable $e) {
-                // Unparseable in this spelling; try the next key. OwnerAdController
-                // accepts whatever JSON the client sends, so a bad value must not be
-                // able to take an endpoint down.
                 continue;
             }
         }
@@ -142,7 +133,6 @@ trait ResolvesAdExpiry
             $schedule = is_array($decoded) ? $decoded : [];
         }
 
-        // A scalar or null (no schedule at all) carries no keys to read.
         return is_array($schedule) ? $schedule : [];
     }
 }

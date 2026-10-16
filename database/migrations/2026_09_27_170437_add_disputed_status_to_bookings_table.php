@@ -14,13 +14,6 @@ return new class extends Migration
     {
         $states = ['pending', 'confirmed', 'checked_in', 'completed', 'cancelled', 'disputed'];
 
-        // SQLite has no ENUM type and rejects MODIFY COLUMN, so the statement is
-        // skipped there — but that is not a no-op. Laravel compiles `enum` on
-        // SQLite as a varchar carrying a CHECK constraint, so skipping the widen
-        // left the column unable to hold 'disputed' at all: an admin marking a
-        // booking disputed got a 500 from the CHECK, while MySQL accepted the
-        // same write. The schema builder rebuilds the table with the new
-        // constraint, which is the SQLite equivalent of the ALTER above.
         if (DB::getDriverName() === 'mysql') {
             $quoted = implode(', ', array_map(fn ($state) => "'{$state}'", $states));
 

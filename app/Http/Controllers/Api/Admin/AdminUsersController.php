@@ -49,12 +49,6 @@ class AdminUsersController extends Controller
             $query->where('status', $request->status);
         }
         if ($request->has('verified')) {
-            // Two branches, two different questions, so they are written out.
-            // This used to read
-            //     $query->whereNotNull($isVerified ? 'verified_at' : DB::raw('null'));
-            // which for the unverified branch compiles to `not null is not null` —
-            // always false, so filtering by unverified returned nobody at all
-            // rather than nobody who is verified.
             if ($request->verified === 'verified') {
                 $query->whereNotNull('verified_at');
             } else {
@@ -131,9 +125,6 @@ class AdminUsersController extends Controller
                     'spaces' => $user->workspaces->map(fn($w) => [
                         'id' => $w->id,
                         'name' => $w->title,
-                        // The lifecycle state, not a guess from the listing
-                        // toggle — deriving it here reported every suspended
-                        // and rejected space as "pending".
                         'status' => $w->status,
                         'is_active' => (bool) $w->is_active,
                     ])->toArray(),

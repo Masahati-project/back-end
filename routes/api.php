@@ -57,7 +57,6 @@ Route::middleware('guest:sanctum')->group(function () {
     Route::post('/auth/google', [GoogleAuthController::class, 'loginWithGoogle'])
         ->middleware('throttle:5,1');
 
-    // Admin Auth
     Route::post('/admin/login', [AdminAuthController::class, 'login'])->middleware('throttle:5,1');
 });
 
@@ -102,35 +101,22 @@ Route::middleware('auth:sanctum')->group(function () {
         ->whereNumber('requestId')
         ->name('special-requests.close');
 
-    // Notifications Routes
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::match(['post', 'patch'], '/notifications/read', [NotificationController::class, 'markAllAsRead'])
         ->name('notifications.mark-all-as-read');
 
-    // Customer Bookings Routes
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
-    // PATCH, not DELETE: the agreed single cancel route, so a cancellation
-    // reason can be carried in a body later. whereNumber keeps a non-numeric
-    // id off the lookup.
     Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancel'])
         ->whereNumber('id')
         ->name('bookings.cancel');
 
-    // Public Ads Feed — accessible to customer and space_owner roles
     Route::get('/ads/open', [PublicAdController::class, 'open'])->name('ads.open');
 
-    // Owner Routes (Space Owner Dashboard)
     Route::middleware('auth:sanctum')->prefix('owner')->group(function () {
-        // Spaces
         Route::get('/spaces', [OwnerSpaceController::class, 'index'])->name('owner.spaces.index');
         Route::post('/spaces', [OwnerSpaceController::class, 'store'])
-            // Two listings a minute, counted per owner. See
-            // App\Http\Middleware\ThrottleSpaceCreation.
             ->middleware('throttle-space-creation')
             ->name('owner.spaces.store');
-        // Literal routes MUST come before parameterised routes they shadow.
-        // whereNumber() on the params below makes shadowing structurally impossible
-        // regardless of declaration order.
         Route::get('/spaces/open', [OwnerSpaceController::class, 'open'])->name('owner.spaces.open');
         Route::get('/spaces/stats', [OwnerSpaceController::class, 'stats'])->name('owner.spaces.stats');
         Route::put('/spaces/{space}', [OwnerSpaceController::class, 'update'])
@@ -143,24 +129,18 @@ Route::middleware('auth:sanctum')->group(function () {
             ->whereNumber('space')
             ->name('owner.spaces.destroy');
 
-        // Bookings
         Route::get('/bookings', [OwnerBookingController::class, 'index'])->name('owner.bookings.index');
         Route::patch('/bookings/{booking}/status', [OwnerBookingController::class, 'updateStatus'])
             ->whereNumber('booking')
             ->name('owner.bookings.update-status');
 
-        // Offers
         Route::get('/offers', [OwnerOfferController::class, 'index'])->name('owner.offers.index');
 
-        // Reviews
         Route::get('/reviews', [OwnerReviewController::class, 'index'])->name('owner.reviews.index');
 
-        // Documents
         Route::get('/documents', [OwnerDocumentController::class, 'index'])->name('owner.documents.index');
         Route::post('/documents', [OwnerDocumentController::class, 'store'])->name('owner.documents.store');
 
-        // A listing's proof file (deed / lease). Separate from the create call
-        // because the owner's form needs the new space id before it can upload.
         Route::get('/spaces/{space}/documents', [OwnerSpaceDocumentController::class, 'index'])
             ->whereNumber('space')
             ->name('owner.spaces.documents.index');
@@ -168,10 +148,8 @@ Route::middleware('auth:sanctum')->group(function () {
             ->whereNumber('space')
             ->name('owner.spaces.documents.store');
 
-        // Ads
         Route::get('/ads', [OwnerAdController::class, 'index'])->name('owner.ads.index');
         Route::post('/ads', [OwnerAdController::class, 'store'])->name('owner.ads.store');
-        // Literal routes before parameterised ones; whereNumber guards on params.
         Route::get('/ads/open', [OwnerAdController::class, 'open'])->name('owner.ads.open');
         Route::get('/ads/published', [OwnerAdController::class, 'published'])->name('owner.ads.published');
         Route::get('/ads/stats', [OwnerAdController::class, 'stats'])->name('owner.ads.stats');
@@ -186,7 +164,6 @@ Route::middleware('auth:sanctum')->group(function () {
             ->name('owner.ads.publish');
     });
 
-    // Admin Routes
     Route::middleware('admin')->prefix('admin')->group(function () {
         Route::post('/logout', [AdminAuthController::class, 'logout']);
         Route::get('/me', [AdminAuthController::class, 'me']);
@@ -212,9 +189,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/users/{id}', [AdminUsersController::class, 'destroy']);
         Route::post('/users/bulk-status', [AdminUsersController::class, 'bulkStatus']);
 
-        // The admin's decision on an owner's proof of identity. Owners register
-        // active and list straight away; this records what the admin concluded
-        // about their document. The listing itself is what waits for approval.
         Route::get('/documents', [AdminOwnerDocumentsController::class, 'index']);
         Route::get('/users/{id}/documents', [AdminOwnerDocumentsController::class, 'show'])
             ->whereNumber('id');

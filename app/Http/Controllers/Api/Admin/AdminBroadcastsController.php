@@ -82,8 +82,6 @@ class AdminBroadcastsController extends Controller
                 'all' => $all,
                 'owners' => $owners,
                 'customers' => $customers,
-                // Kept so an existing admin panel that still reads this key keeps
-                // working. The role was renamed from "freelancer" to "customer".
                 'freelancers' => $customers,
             ]
         ]);
@@ -98,9 +96,6 @@ class AdminBroadcastsController extends Controller
         $request->validate([
             'title' => 'required|string|min:1|max:120',
             'body' => 'required|string|min:1|max:1000',
-            // "freelancers" is the wire value for the customer segment. It is
-            // stored in the target enum and mapped to role "customer" below, so
-            // changing it would break existing drafts and the admin panel.
             'target' => 'required|in:all,owners,freelancers',
             'link' => 'nullable|string|max:300',
             'channels' => 'required|array|min:1',

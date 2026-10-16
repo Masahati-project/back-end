@@ -11,7 +11,6 @@ class NotificationService
      */
     public function __construct()
     {
-        //
     }
 
     public static function create(int $userId, string $type, string $message): Notification
@@ -26,7 +25,6 @@ class NotificationService
 
     public static function createForSpecialRequest(int $userId, string $action, string $requestTitle): Notification
     {
-        // Types match the names the frontend filters on.
         $map = [
             'created'  => ['special_request_new',    "طلب جديد في السوق: «{$requestTitle}» — قدّم عرضك."],
             'accepted' => ['special_request_accepted', "تم قبول طلبك الخاص: {$requestTitle}"],

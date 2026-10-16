@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('body');
             $table->boolean('read')->default(false);
             $table->boolean('archived')->default(false);
-            $table->string('ref')->nullable(); // reference to source (dispute id, space id, etc)
+            $table->string('ref')->nullable();
             $table->timestamps();
 
             $table->index(['read', 'archived']);

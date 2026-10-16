@@ -20,15 +20,12 @@ class StoreSpecialRequestRequest extends FormRequest
             'space_type' => ['required', Rule::in(['room', 'whole'])],
             'capacity' => ['required', 'integer', 'min:10'],
             'schedule_preset' => ['required', Rule::in(['once', 'daily', 'weekly', 'monthly', 'yearly'])],
-            // The frontend requires a repeat count for any recurring preset.
             'schedule_count' => [
                 'required_if:schedule_preset,daily,weekly,monthly,yearly',
                 'nullable',
                 'integer',
                 'min:1',
             ],
-            // The docs show a human range such as "10:00 ص – 1:00 م", so only
-            // validate the clock form when the value looks like HH:MM.
             'preferred_time' => ['required', 'string', 'max:120'],
             'area' => ['nullable', 'string', 'max:255'],
             'amenities' => ['nullable', 'array'],

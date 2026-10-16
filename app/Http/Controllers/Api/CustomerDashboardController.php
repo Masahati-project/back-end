@@ -132,8 +132,6 @@ class CustomerDashboardController extends Controller
         $userId = $request->user()->id;
         $spaceId = $request->space_id;
 
-        // Scoped to the authenticated user, so another user's favorite of the
-        // same space can never flip the reported direction of this toggle.
         $isFavorited = Favorite::where('user_id', $userId)
             ->where('workspace_id', $spaceId)
             ->exists();

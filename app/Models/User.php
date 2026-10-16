@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-
 use App\Services\BrevoMailService;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -55,13 +53,6 @@ class User extends Authenticatable
     #[Override]
     public function sendPasswordResetNotification($token)
     {
-        // Built from config('app.frontend_url') so the token lands on the page
-        // that renders the form. Pointing this at the API instead yields a link
-        // the browser opens with GET, which the reset route answers with
-        // "method not allowed" — the user never sees the form.
-        //
-        // Not wrapped in url(): that helper rewrites a relative path against
-        // APP_URL, which is exactly the wrong host for this link.
         $url = config('app.frontend_url')
             . '/reset-password?token=' . urlencode($token)
             . '&email=' . urlencode($this->email);
@@ -158,13 +149,4 @@ class User extends Authenticatable
             ->latestOfMany();
     }
 
-    // public function getTotalCompletedHoursAttribute(): float
-    // {
-    //     $totalMinutes = $this->bookings()
-    //         ->where('status', 'completed')
-    //         ->selectRaw('SUM(TIMESTAMPDIFF(MINUTE, start_datetime, end_datetime)) as total_minutes')
-    //         ->value('total_minutes');
-
-    //     return round(($totalMinutes ?? 0) / 60, 2);
-    // }
 }

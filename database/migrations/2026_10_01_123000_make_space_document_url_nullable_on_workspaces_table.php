@@ -41,8 +41,6 @@ return new class extends Migration
             return;
         }
 
-        // A NOT NULL column cannot hold the NULLs written while the column was
-        // nullable, so backfill them before restoring the constraint.
         DB::table('workspaces')
             ->whereNull('space_document_url')
             ->update(['space_document_url' => '']);

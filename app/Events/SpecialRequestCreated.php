@@ -18,7 +18,6 @@ class SpecialRequestCreated
      */
     public function __construct(public SpecialRequest $specialRequest)
     {
-        //
     }
 
     /**

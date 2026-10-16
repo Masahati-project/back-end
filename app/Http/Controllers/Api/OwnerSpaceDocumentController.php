@@ -41,9 +41,6 @@ class OwnerSpaceDocumentController extends Controller
         $workspace = $this->ensureOwnsWorkspace($space);
 
         $request->validate([
-            // `proof` is the field name the owner's form uses, matching the slot
-            // id on the model side. The aliases keep older builds that sent
-            // `documents[]` or a bare `file` working.
             'proof' => ['required_without_all:documents,file', 'nullable', 'file', 'mimes:pdf,png,jpg,jpeg,webp', 'max:' . self::MAX_KILOBYTES],
             'documents' => ['required_without_all:proof,file', 'nullable', 'file', 'mimes:pdf,png,jpg,jpeg,webp', 'max:' . self::MAX_KILOBYTES],
             'file' => ['required_without_all:proof,documents', 'nullable', 'file', 'mimes:pdf,png,jpg,jpeg,webp', 'max:' . self::MAX_KILOBYTES],
@@ -60,8 +57,6 @@ class OwnerSpaceDocumentController extends Controller
 
         $path = $this->storeProof($upload, $workspace->id);
 
-        // The verification row is the record the admin screen reads, and the only
-        // place a per-listing document can carry its own review state.
         $verification = SpaceOwnerVerification::updateOrCreate(
             [
                 'user_id' => $workspace->owner_id,
@@ -69,15 +64,11 @@ class OwnerSpaceDocumentController extends Controller
             ],
             [
                 'proof_document_url' => $path,
-                // A fresh upload always goes back for review, even if a previous
-                // one was already approved: the admin approved *that* file.
                 'status' => 'pending',
                 'verified_at' => null,
             ]
         );
 
-        // Mirrored onto the listing so the older readers of this column keep
-        // working, and so the admin detail screen always has a path to show.
         $workspace->forceFill(['space_document_url' => $path])->save();
 
         return response()->json([
@@ -115,8 +106,6 @@ class OwnerSpaceDocumentController extends Controller
         );
 
         if (! $path) {
-            // Surfaced as a 500 by the handler; storage being unreachable is a
-            // server fault, not something the owner can fix by retrying.
             throw new \RuntimeException('تعذّر حفظ المستند على الخادم.');
         }
 

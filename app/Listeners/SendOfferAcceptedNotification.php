@@ -14,7 +14,6 @@ class SendOfferAcceptedNotification
      */
     public function __construct()
     {
-        //
     }
 
     /**
@@ -24,12 +23,9 @@ class SendOfferAcceptedNotification
     {
         $workspace = $event->offer->workspace;
 
-        // The offer belongs to the space owner, so that is who gets told. Notifying
-        // the request owner would tell the customer their own offer was accepted.
         NotificationService::createForOffer(
             $workspace?->owner_id ?? $event->specialRequest->user_id,
             'accepted',
-            // The copy names the request the offer was made against, not the space.
             $event->specialRequest->title ?? 'المساحة'
         );
     }

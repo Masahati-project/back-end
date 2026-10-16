@@ -86,10 +86,6 @@ class AdminBookingsTest extends TestCase
         ], $overrides));
     }
 
-    // -------------------------------------------------------------------------
-    // PATCH /api/admin/bookings/{id}/status
-    // -------------------------------------------------------------------------
-
     public function test_admin_can_set_booking_to_confirmed(): void
     {
         $admin = $this->admin();
@@ -171,7 +167,6 @@ class AdminBookingsTest extends TestCase
 
         $booking = $this->createBooking($customer, $unit, ['status' => 'confirmed', 'ref' => 'BK-1004']);
 
-        // Create an OPEN dispute on this booking
         Dispute::create([
             'booking_id' => $booking->id,
             'user_id' => $customer->id,
@@ -189,7 +184,6 @@ class AdminBookingsTest extends TestCase
         $response->assertStatus(409)
             ->assertJsonPath('message', 'Cannot update booking status while dispute is open');
 
-        // Verify the booking status was NOT changed
         $this->assertSame($originalStatus, $booking->fresh()->status);
     }
 
@@ -217,14 +211,12 @@ class AdminBookingsTest extends TestCase
 
         $booking = $this->createBooking($customer, $unit, ['ref' => 'BK-1005']);
 
-        // 'cancelled' is NOT in the allowed enum per A6.3 spec
         $response = $this->withToken($adminToken)
             ->patchJson("/api/admin/bookings/{$booking->id}/status", ['status' => 'cancelled']);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['status']);
 
-        // 'banana' also invalid
         $response = $this->withToken($adminToken)
             ->patchJson("/api/admin/bookings/{$booking->id}/status", ['status' => 'banana']);
 
@@ -296,7 +288,6 @@ class AdminBookingsTest extends TestCase
 
         $booking = $this->createBooking($customer, $unit, ['ref' => 'BK-1009', 'status' => 'confirmed']);
 
-        // Without #
         $response = $this->withToken($adminToken)
             ->getJson("/api/admin/bookings/{$booking->ref}");
 
@@ -304,13 +295,8 @@ class AdminBookingsTest extends TestCase
             ->assertJsonPath('data.id', $booking->id)
             ->assertJsonPath('data.ref', 'BK-1009');
 
-        // With # (simulate legacy stored form).
         $legacyBooking = $this->createBooking($customer, $unit, ['ref' => '#BK-1010', 'status' => 'pending']);
 
-        // rawurlencode() is load-bearing: '#' is the URL fragment delimiter, so an
-        // unencoded one never reaches the server at all. The request arrives as
-        // /api/admin/bookings/ — the index route — and the show() branch below
-        // never runs.
         $response = $this->withToken($adminToken)
             ->getJson('/api/admin/bookings/'.rawurlencode($legacyBooking->ref));
 

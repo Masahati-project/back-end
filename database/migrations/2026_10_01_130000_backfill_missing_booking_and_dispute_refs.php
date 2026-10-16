@@ -57,7 +57,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
     }
 
     /**
@@ -70,8 +69,6 @@ return new class extends Migration
      */
     private function backfill(string $table, callable $format): void
     {
-        // The table or column may legitimately be absent (a trimmed install, or
-        // a database whose schema has not caught up); nothing to repair then.
         if (! Schema::hasTable($table) || ! Schema::hasColumn($table, 'ref')) {
             return;
         }

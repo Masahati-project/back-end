@@ -30,9 +30,6 @@ class PasswordController extends Controller
 
         Password::sendResetLink($request->only('email'));
 
-        // The status is deliberately discarded. RESET_LINK_SENT and
-        // RESET_THROTTLED are both reported as the same success body, because
-        // the difference between them is exactly what must not be observable.
         return response()->json([
             'message' => 'تم إرسال رابط إعادة تعيين كلمة السر إلى بريدك الإلكتروني.',
         ], 200);
@@ -79,9 +76,6 @@ class PasswordController extends Controller
             ], 200);
         }
 
-        // INVALID_TOKEN: the token was unknown, already used, or expired. Never
-        // say which — that would tell an attacker whether a guess was close.
-        // INVALID_USER: the account went away between the request and now.
         return response()->json([
             'message' => 'الرمز غير صالح أو انتهت صلاحيته.',
             'errors' => [

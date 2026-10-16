@@ -17,8 +17,6 @@ class NotificationController extends Controller
             ->orderByDesc('created_at')
             ->paginate($request->integer('per_page', 20));
 
-        // The frontend reads `text` and `read`; the columns are message and
-        // is_read, so both spellings are exposed to avoid blank cells.
         $formatted = $notifications->getCollection()->map(fn ($n) => [
             'id' => $n->id,
             'type' => $n->type,

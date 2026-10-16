@@ -17,7 +17,7 @@ return new class extends Migration
             $table->text('body')->nullable();
             $table->enum('target', ['all', 'owners', 'freelancers'])->default('all');
             $table->string('link', 300)->nullable();
-            $table->json('channels')->nullable(); // ["in_app", "email"]
+            $table->json('channels')->nullable();
             $table->foreignId('created_by')->constrained('users');
             $table->timestamps();
         });

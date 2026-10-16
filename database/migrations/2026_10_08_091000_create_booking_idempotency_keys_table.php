@@ -33,28 +33,14 @@ return new class extends Migration
         Schema::create('booking_idempotency_keys', function (Blueprint $table) {
             $table->id();
 
-            // Scoped per user on purpose. A key is a client's private retry token,
-            // not a global token: two customers who happen to generate the same
-            // string (a timestamp, a UUIDv4 truncated by a bad client, a shared
-            // hard-coded "test-key") must never collide. A global unique index on
-            // `idempotency_key` alone would make one customer's retry read as
-            // another customer's booking and hand it back to them — a booking
-            // that leaks one account's reservation to another.
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
 
-            // 255 is the widest key this endpoint accepts; the controller rejects
-            // anything longer with a 422 before it reaches this column.
             $table->string('idempotency_key', 255);
 
-            // The booking this request produced. Cascade: when the booking is
-            // deleted there is nothing left to be idempotent about, and keeping
-            // the row would make the key look "already processed" forever.
             $table->foreignId('booking_id')->constrained()->cascadeOnDelete();
 
             $table->timestamps();
 
-            // The concurrency guarantee. `user_id` leads so the index also serves
-            // the lookup the controller does on every request.
             $table->unique(['user_id', 'idempotency_key']);
         });
     }

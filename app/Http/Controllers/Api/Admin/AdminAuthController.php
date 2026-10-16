@@ -38,7 +38,6 @@ class AdminAuthController extends Controller
             ], 403);
         }
 
-        // Create token
         $token = $user->createToken('admin-token', ['admin'])->plainTextToken;
 
         return response()->json([
@@ -160,7 +159,6 @@ class AdminAuthController extends Controller
         $user->password = Hash::make($request->password);
         $user->save();
 
-        // Revoke all other tokens except current one
         $currentTokenId = $request->user()->currentAccessToken()->id;
         $user->tokens()->where('id', '!=', $currentTokenId)->delete();
 

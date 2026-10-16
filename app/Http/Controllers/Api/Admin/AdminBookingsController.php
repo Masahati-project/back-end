@@ -69,8 +69,6 @@ class AdminBookingsController extends Controller
      */
     public function show($ref)
     {
-        // Accept the stored form and the display form. Older rows may still
-        // carry a leading "#", so both are tried.
         $bare = ltrim($ref, '#');
         $booking = Booking::whereIn('ref', [$bare, '#' . $bare])->firstOrFail();
 
