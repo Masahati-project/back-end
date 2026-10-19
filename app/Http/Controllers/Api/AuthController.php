@@ -45,10 +45,10 @@ class AuthController extends Controller
             'proof_document_url' => $request?->proof_document_url,
             'role' => 'space_owner',
             'status' => 'active',
-            'otp' => hash('sha256', (string)$otp),
+            'otp' => hash('sha256', (string) $otp),
         ], now()->addMinutes(10));
 
-        $isSent = OtpController::sendOtp($request->email, $request->name, (string)$otp);
+        $isSent = OtpController::sendOtp($request->email, $request->name, (string) $otp);
 
         if (!$isSent) {
             return response()->json([
@@ -86,10 +86,10 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'role' => 'customer',
             'status' => 'active',
-            'otp' => hash('sha256', (string)$otp),
+            'otp' => hash('sha256', (string) $otp),
         ], now()->addMinutes(10));
 
-        $isSent = OtpController::sendOtp($request->email, $request->name, (string)$otp);
+        $isSent = OtpController::sendOtp($request->email, $request->name, (string) $otp);
 
         if (!$isSent) {
             return response()->json([
@@ -118,25 +118,30 @@ class AuthController extends Controller
             $loginField => $loginValue,
             'password' => $request->input('password'),
         ];
-        
+
         if (Auth::attempt($credentials)) {
             $user = User::where($loginField, $loginValue)->first();
-            
+
             $user->tokens()->delete();
-            
-            $token = $user->createToken('auth_token')->plainTextToken;
-            return response()->json([
-                'message' => 'تم تسجيل دخولك بنجاح',
-                'token'   => $token,
-                'name'    => $user->full_name,
-                'user'    => [
-                    'id'    => $user->id,
-                    'name'  => $user->full_name,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'role'  => $user->role,
-                ],
-            ], 200);
+            if ($user->status == 'active') {
+                $token = $user->createToken('auth_token')->plainTextToken;
+                return response()->json([
+                    'message' => 'تم تسجيل دخولك بنجاح',
+                    'token' => $token,
+                    'name' => $user->full_name,
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->full_name,
+                        'email' => $user->email,
+                        'phone' => $user->phone,
+                        'role' => $user->role,
+                    ],
+                ], 200);
+            }else{
+                return response()->json([
+                    'message'=> 'انت غير مصرح بالدخول',
+                ], 203);
+            }
         }
 
         return response()->json([
