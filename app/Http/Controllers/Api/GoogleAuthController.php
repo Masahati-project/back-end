@@ -32,8 +32,8 @@ class GoogleAuthController extends Controller
         }
 
         $googleId = $payload['sub'];
-        $email    = $payload['email'];
-        $name     = $payload['name'] ?? $email;
+        $email = $payload['email'];
+        $name = $payload['name'] ?? $email;
         $avatarUrl = $payload['picture'] ?? null;
 
         $user = User::where('google_id', $googleId)->orWhere('email', $email)->first();
@@ -46,19 +46,24 @@ class GoogleAuthController extends Controller
                     'profile_picture_url' => $user->profile_picture_url ?? $avatarUrl,
                 ]);
             }
+            if ($user->status == 'active') {
+                $token = $user->createToken('auth_token')->plainTextToken;
 
-            $token = $user->createToken('auth_token')->plainTextToken;
-
-            return response()->json([
-                'message' => 'تم تسجيل الدخول بنجاح',
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->full_name,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                ],
-                'token' => $token,
-            ]);
+                return response()->json([
+                    'message' => 'تم تسجيل الدخول بنجاح',
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->full_name,
+                        'email' => $user->email,
+                        'role' => $user->role,
+                    ],
+                    'token' => $token,
+                ]);
+            }else{
+                return response()->json([
+                    'message'=> 'انت غير مصرح بالدخول',
+                ], 203);
+            }
         }
 
         if (blank($request->input('role'))) {
