@@ -61,7 +61,10 @@ class GoogleAuthController extends Controller
                 ]);
             }else{
                 return response()->json([
-                    'message'=> 'انت غير مصرح بالدخول',
+                    'message'=> $user->status === 'suspended'
+                        ? 'تم تعليق حسابك، يرجى التواصل مع الإدارة'
+                        : 'حسابك قيد المراجعة، لا يمكنك تسجيل الدخول حتى تتم الموافقة عليه',
+                    'status' => $user->status,
                 ], 203);
             }
         }

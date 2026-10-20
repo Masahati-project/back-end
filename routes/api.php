@@ -65,7 +65,7 @@ Route::get('/spaces/{id}', [SpacesController::class, 'show'])
     ->whereNumber('id')
     ->name('spaces.public.show');
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'active-account'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'profile'])->name('profile');
     Route::patch('/owner/profile', [ProfileController::class, 'updateOwnerProfile'])->name('owner.profile.update');
     Route::patch('/customer/profile', [ProfileController::class, 'updateCustomerProfile'])->name('customer.profile.update');
@@ -112,7 +112,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/ads/open', [PublicAdController::class, 'open'])->name('ads.open');
 
-    Route::middleware('auth:sanctum')->prefix('owner')->group(function () {
+    Route::middleware('active-account')->prefix('owner')->group(function () {
         Route::get('/spaces', [OwnerSpaceController::class, 'index'])->name('owner.spaces.index');
         Route::post('/spaces', [OwnerSpaceController::class, 'store'])
             ->middleware('throttle-space-creation')

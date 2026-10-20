@@ -22,6 +22,7 @@ class ProfileController extends Controller
             'phone' => $user->phone,
             'email' => $user->email,
             'role' => $user->role,
+            'status' => $user->status,
             'picture' => $user->profile_picture_url
                 ? Storage::url($user->profile_picture_url)
                 : null,

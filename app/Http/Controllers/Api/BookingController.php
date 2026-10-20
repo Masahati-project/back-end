@@ -18,16 +18,7 @@ use Illuminate\Validation\Rule;
 
 class BookingController extends Controller
 {
-    /**
-     * POST /api/bookings
-     *
-     * The client sends a space-centric payload — space_id, booking_date,
-     * start_time, end_time — while the schema is unit-centric: `bookings` has a
-     * unit_id and nothing else, and only a Unit carries pricing. Everything here
-     * exists to close that gap honestly: resolve space_id to a unit, derive the
-     * hours, price the slot server side, and refuse the request rather than guess
-     * when the space cannot be booked at all.
-     */
+
     public function store(Request $request)
     {
         if ($request->user()->role !== 'customer') {
@@ -36,7 +27,7 @@ class BookingController extends Controller
             ], 403);
         }
 
-        $userId = (int) $request->user()->id;
+        $userId = $request->user()->id;
         $idempotencyKey = $this->readIdempotencyKey($request);
 
         $validated = $request->validate([
@@ -69,7 +60,7 @@ class BookingController extends Controller
             ->whereNull('deleted_at')
             ->first();
 
-        if (! $workspace) {
+        if (!$workspace) {
             return $this->fieldError('هذه المساحة غير متاحة للحجز حالياً.', 'space_id');
         }
 
@@ -131,7 +122,7 @@ class BookingController extends Controller
             $result = DB::transaction(function () use ($userId, $validated, $unit, $start, $end, $hours, $price, $idempotencyKey) {
                 $lockedUnit = Unit::whereKey($unit->id)->lockForUpdate()->first();
 
-                if (! $lockedUnit) {
+                if (!$lockedUnit) {
                     return ['gone' => true];
                 }
 
@@ -219,7 +210,7 @@ class BookingController extends Controller
     {
         $booking = Booking::find($id);
 
-        if (! $booking) {
+        if (!$booking) {
             return response()->json([
                 'message' => 'الحجز غير موجود.',
             ], 404);
@@ -240,7 +231,7 @@ class BookingController extends Controller
             ], 200);
         }
 
-        if (! in_array($booking->status, ['pending', 'confirmed'], true)) {
+        if (!in_array($booking->status, ['pending', 'confirmed'], true)) {
             return response()->json([
                 'message' => 'لا يمكن إلغاء حجز بهذه الحالة.',
             ], 409);
@@ -255,33 +246,6 @@ class BookingController extends Controller
             'booking' => $this->formatBookingResponse($booking),
         ], 200);
     }
-
-    /**
-     * Map space_id onto a bookable unit.
-     *
-     * The contract sends space_id and no unit_id, but `bookings` hangs off Unit
-     * and only a Unit carries pricing — so something has to pick the unit. There
-     * is exactly one way to do that without inventing data:
-     *
-     * - Only available units of that space are candidates; an `unavailable` unit
-     *   is not bookable regardless of what the client asked for.
-     * - No available unit at all -> 422. Booking anyway would either fail on the
-     *   pricing join or create a booking nobody can honour.
-     * - A `unit_id` in the body is honoured, but only if it belongs to this space
-     *   and is available. A unit_id from another space is rejected rather than
-     *   silently swapped, or the customer would reserve a desk in one space and
-     *   be told they booked another.
-     * - Otherwise the first available unit (ordered by id) is used. Falling back
-     *   to "first" rather than refusing is deliberate: OwnerSpaceController::store
-     *   creates exactly one unit per space, and SpacesController,
-     *   CustomerDashboardController and SpecialRequestController::acceptOffer all
-     *   read `units->first()`. A space with several units is the exception, and
-     *   failing a legitimate customer's booking because the client never knew
-     *   units existed would be the worse failure. Ordering by id keeps the choice
-     *   deterministic instead of depending on storage order.
-     *
-     * @return array{0: ?Unit, 1: ?JsonResponse}  The unit, or the response to return.
-     */
     private function resolveUnit(Workspace $workspace, ?int $requestedUnitId): array
     {
         $available = Unit::where('workspace_id', $workspace->id)
@@ -290,18 +254,24 @@ class BookingController extends Controller
             ->get();
 
         if ($available->isEmpty()) {
-            return [null, response()->json([
-                'message' => 'لا توجد وحدات متاحة للحجز في هذه المساحة حالياً.',
-            ], 422)];
+            return [
+                null,
+                response()->json([
+                    'message' => 'لا توجد وحدات متاحة للحجز في هذه المساحة حالياً.',
+                ], 422)
+            ];
         }
 
         if ($requestedUnitId !== null) {
             $unit = $available->firstWhere('id', $requestedUnitId);
 
-            if (! $unit instanceof Unit) {
-                return [null, response()->json([
-                    'message' => 'الوحدة المحددة غير متاحة في هذه المساحة.',
-                ], 422)];
+            if (!$unit instanceof Unit) {
+                return [
+                    null,
+                    response()->json([
+                        'message' => 'الوحدة المحددة غير متاحة في هذه المساحة.',
+                    ], 422)
+                ];
             }
 
             return [$unit, null];
@@ -348,7 +318,7 @@ class BookingController extends Controller
             ->where('idempotency_key', $key)
             ->first();
 
-        if (! $row) {
+        if (!$row) {
             return null;
         }
 
@@ -402,7 +372,7 @@ class BookingController extends Controller
     {
         $clock = substr(trim((string) $time), 0, 5);
 
-        if (! preg_match('/^(\d{1,2}):(\d{2})$/', $clock, $matches)) {
+        if (!preg_match('/^(\d{1,2}):(\d{2})$/', $clock, $matches)) {
             return -1;
         }
 

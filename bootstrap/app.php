@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
+            'active-account' => \App\Http\Middleware\EnsureAccountIsActive::class,
             'throttle-verified' => \App\Http\Middleware\ThrottleVerifiedAttempts::class,
             'throttle-space-creation' => \App\Http\Middleware\ThrottleSpaceCreation::class,
         ]);
