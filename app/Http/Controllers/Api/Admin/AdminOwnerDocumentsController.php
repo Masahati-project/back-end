@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\NotificationService;
+use App\Services\SpaceDocumentService;
 use Illuminate\Http\Request;
 
 /**
@@ -28,6 +30,14 @@ class AdminOwnerDocumentsController extends Controller
      */
     public function index(Request $request)
     {
+        // The admin's space preview asks for one listing's proof files:
+        // GET /api/admin/documents?space_id=12. That is a different question
+        // from the owner-verification queue below, so it gets a flat,
+        // file-per-entry response the preview adapter can read directly.
+        if ($request->has('space_id')) {
+            return $this->documentsForSpace($request);
+        }
+
         $status = $request->query('status', 'pending');
 
         if (! in_array($status, ['none', 'pending', 'approved', 'rejected'], true)) {
@@ -47,6 +57,52 @@ class AdminOwnerDocumentsController extends Controller
                 'per_page' => $documents->perPage(),
                 'total' => $documents->total(),
                 'last_page' => $documents->lastPage(),
+            ],
+        ]);
+    }
+
+    /**
+     * The proof files attached to one listing, as a flat list.
+     *
+     * Both `documents` and `data` are emitted because the preview reads one of
+     * them depending on the client version; the adapter normalises whichever
+     * key it finds. The status filter is optional so the preview can show the
+     * evidence after an approve/reject decision, not only while pending.
+     */
+    private function documentsForSpace(Request $request)
+    {
+        $validated = $request->validate([
+            'space_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $space = Workspace::with('owner')->find($validated['space_id']);
+
+        if (!$space) {
+            return response()->json([
+                'message' => 'المساحة غير موجودة.',
+                'documents' => [],
+                'data' => [],
+            ], 404);
+        }
+
+        $status = $request->query('status');
+        $status = is_string($status) ? $status : null;
+
+        $documents = SpaceDocumentService::filterByStatus(
+            SpaceDocumentService::listFor($space),
+            $status
+        );
+
+        return response()->json([
+            'message' => 'تم جلب مستندات المساحة بنجاح.',
+            'space_id' => $space->id,
+            'space_title' => $space->title,
+            'owner_id' => $space->owner_id,
+            'owner_name' => $space->owner?->full_name,
+            'documents' => $documents,
+            'data' => $documents,
+            'meta' => [
+                'total' => count($documents),
             ],
         ]);
     }
@@ -187,6 +243,12 @@ class AdminOwnerDocumentsController extends Controller
             return $path;
         }
 
-        return \Illuminate\Support\Facades\Storage::disk('cloudinary')->url($path);
+        try {
+            return \Illuminate\Support\Facades\Storage::disk('cloudinary')->url($path);
+        } catch (\Throwable) {
+            // A missing asset must not take the whole review queue down; the
+            // stored path is still something the admin client can show.
+            return $path;
+        }
     }
 }

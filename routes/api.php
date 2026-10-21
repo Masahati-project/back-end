@@ -119,7 +119,12 @@ Route::middleware(['auth:sanctum', 'active-account'])->group(function () {
             ->name('owner.spaces.store');
         Route::get('/spaces/open', [OwnerSpaceController::class, 'open'])->name('owner.spaces.open');
         Route::get('/spaces/stats', [OwnerSpaceController::class, 'stats'])->name('owner.spaces.stats');
-        Route::put('/spaces/{space}', [OwnerSpaceController::class, 'update'])
+        // PUT stays for existing clients; PATCH is the partial-update contract
+        // the owner dashboard speaks, and POST is registered so multipart bodies
+        // can carry `_method=PATCH` (HTML-style method spoofing) without a 405
+        // fallback. All verbs land on the same handler, which now edits only the
+        // fields a request actually carries.
+        Route::match(['put', 'patch', 'post'], '/spaces/{space}', [OwnerSpaceController::class, 'update'])
             ->whereNumber('space')
             ->name('owner.spaces.update');
         Route::patch('/spaces/{space}/active', [OwnerSpaceController::class, 'toggleActive'])

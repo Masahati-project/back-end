@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Pricing;
 use App\Models\Unit;
 use App\Models\Workspace;
+use App\Services\ImageService;
 use App\Services\NotificationService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -452,7 +453,7 @@ class BookingController extends Controller
             'space_id' => $space?->id,
             'space_name' => $space?->title,
             'space_location' => $space?->location,
-            'image' => $space?->images?->first()?->image_url,
+            'image' => ImageService::url($space?->images?->first()?->image_url),
             'unit_id' => $booking->unit_id,
             'date' => $start?->format('Y-m-d'),
             'start_datetime' => $start?->toIso8601String(),

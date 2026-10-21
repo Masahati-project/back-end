@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Review;
+use App\Services\ImageService;
 use App\Traits\OwnerAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -37,7 +38,7 @@ class OwnerReviewController extends Controller
 
     private function formatReviewResponse(Review $review)
     {
-        $spaceImage = $review->workspace->images->first()?->image_url;
+        $spaceImage = ImageService::url($review->workspace->images->first()?->image_url);
 
         return [
             'id' => $review->id,

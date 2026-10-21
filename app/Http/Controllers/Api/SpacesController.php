@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Unit;
 use App\Models\Workspace;
+use App\Services\ImageService;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 class SpacesController extends Controller
 {
     public const MAX_PER_PAGE = 50;
+
     public const DEFAULT_PER_PAGE = 15;
 
     private const CATEGORIES = ['desk', 'private_room', 'full_space'];
@@ -88,7 +90,7 @@ class SpacesController extends Controller
         $search = trim($this->stringQuery($request, 'search'));
 
         if ($search !== '') {
-            $like = '%' . $search . '%';
+            $like = '%'.$search.'%';
 
             $query->where(function (Builder $group) use ($like) {
                 $group->where('workspaces.title', 'like', $like)
@@ -100,25 +102,25 @@ class SpacesController extends Controller
         $category = $this->stringQuery($request, 'category');
 
         if (in_array($category, self::CATEGORIES, true)) {
-            $query->whereRaw(self::CATEGORY_SQL . ' = ?', [$category]);
+            $query->whereRaw(self::CATEGORY_SQL.' = ?', [$category]);
         }
 
         $area = trim($this->stringQuery($request, 'area'));
 
         if ($area !== '') {
-            $query->where('workspaces.location', 'like', '%' . $area . '%');
+            $query->where('workspaces.location', 'like', '%'.$area.'%');
         }
 
         $minPrice = $this->numericQuery($request, 'min_price');
 
         if ($minPrice !== null) {
-            $query->whereRaw(self::HOURLY_PRICE_SQL . ' >= ? + 0', ['hourly', $minPrice]);
+            $query->whereRaw(self::HOURLY_PRICE_SQL.' >= ? + 0', ['hourly', $minPrice]);
         }
 
         $maxPrice = $this->numericQuery($request, 'max_price');
 
         if ($maxPrice !== null) {
-            $query->whereRaw(self::HOURLY_PRICE_SQL . ' <= ? + 0', ['hourly', $maxPrice]);
+            $query->whereRaw(self::HOURLY_PRICE_SQL.' <= ? + 0', ['hourly', $maxPrice]);
         }
 
         foreach ($this->requestedAmenities($request) as $name) {
@@ -128,7 +130,7 @@ class SpacesController extends Controller
         $minRating = $this->numericQuery($request, 'min_rating');
 
         if ($minRating !== null && $minRating > 0) {
-            $query->whereRaw(self::RATING_SQL . ' >= ? + 0', [
+            $query->whereRaw(self::RATING_SQL.' >= ? + 0', [
                 max(0.0, min(5.0, $minRating)),
             ]);
         }
@@ -138,8 +140,8 @@ class SpacesController extends Controller
     {
         match ($sort) {
             'rating' => $query->orderBy('reviews_avg_rating', 'desc'),
-            'price_asc' => $query->orderByRaw(self::HOURLY_PRICE_SQL . ' asc', ['hourly']),
-            'price_desc' => $query->orderByRaw(self::HOURLY_PRICE_SQL . ' desc', ['hourly']),
+            'price_asc' => $query->orderByRaw(self::HOURLY_PRICE_SQL.' asc', ['hourly']),
+            'price_desc' => $query->orderByRaw(self::HOURLY_PRICE_SQL.' desc', ['hourly']),
             default => $query->orderBy('workspaces.created_at', 'desc'),
         };
 
@@ -165,7 +167,15 @@ class SpacesController extends Controller
 
         $instantBooking = $isActive && $isLive && $availableUnits->isNotEmpty();
 
-        $gallery = $space->images->pluck('image_url')->values()->toArray();
+        // Full delivery URLs; legacy rows that hold an upload flag ("1") come
+        // out as null rather than a broken link.
+        $gallery = $space->images
+            ->pluck('image_url')
+            ->map(fn ($path) => ImageService::url($path))
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
 
         $amenityNames = $space->amenities->pluck('name')->values()->toArray();
 
@@ -181,7 +191,7 @@ class SpacesController extends Controller
             'location' => $space->location,
             'area' => $space->location,
             'category' => $units->first()?->type,
-            'image' => $space->images->first()?->image_url,
+            'image' => $gallery[0] ?? null,
             'gallery' => $gallery,
             'price_per_hour' => $hourly['price'],
             'price' => $hourly['price'],

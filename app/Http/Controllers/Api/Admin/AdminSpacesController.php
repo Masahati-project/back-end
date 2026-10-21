@@ -5,9 +5,10 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Workspace;
 use App\Models\Review;
+use App\Services\ImageService;
 use App\Services\NotificationService;
+use App\Services\SpaceDocumentService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class AdminSpacesController extends Controller
 {
@@ -169,83 +170,12 @@ class AdminSpacesController extends Controller
         // lease behind the listing. `documents` is what the "فتح المستند" button
         // reads, so it is emitted at the top level and repeated under `space` —
         // both shapes are in the contract.
-        $detail['documents'] = $this->spaceDocuments($space);
+        $detail['documents'] = SpaceDocumentService::listFor($space);
 
         return response()->json([
             'data' => $detail,
             'space' => $detail,
         ]);
-    }
-
-    /**
-     * The proof files attached to a listing, for the admin approval screen.
-     *
-     * Every entry carries a `url` and an absolute one, because that is the only
-     * field the frontend actually consumes before rendering the open-document
-     * button. Two places can hold a file: the per-space verification row (the
-     * upload endpoint's record) and the column on the listing itself, which
-     * predates it and is still written by older clients.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function spaceDocuments(Workspace $space): array
-    {
-        $documents = [];
-
-        foreach ($space->spaceDocuments()->orderByDesc('id')->get() as $verification) {
-            if (blank($verification->proof_document_url)) {
-                continue;
-            }
-
-            $documents[] = [
-                'kind' => 'proof',
-                'name' => $verification->proof_document_url,
-                'url' => $this->absoluteDocumentUrl($verification->proof_document_url),
-                'path' => $verification->proof_document_url,
-                'status' => $verification->status,
-                'uploaded_at' => optional($verification->created_at)->toIso8601String(),
-            ];
-        }
-
-        // Older listings predate the upload endpoint and only carry the column.
-        if (blank($space->space_document_url)) {
-            return $documents;
-        }
-
-        $alreadyListed = collect($documents)->contains(
-            fn (array $document) => $document['path'] === $space->space_document_url
-        );
-
-        if (! $alreadyListed) {
-            $documents[] = [
-                'kind' => 'proof',
-                'name' => $space->space_document_url,
-                'url' => $this->absoluteDocumentUrl($space->space_document_url),
-                'path' => $space->space_document_url,
-                'status' => 'pending',
-                'uploaded_at' => optional($space->created_at)->toIso8601String(),
-            ];
-        }
-
-        return $documents;
-    }
-
-    /**
-     * Files live on the cloudinary disk and are stored as relative paths, while
-     * older rows and client-supplied values can already hold an absolute URL.
-     * Normalise both into something an <a href> can open.
-     */
-    private function absoluteDocumentUrl(?string $path): ?string
-    {
-        if (blank($path)) {
-            return null;
-        }
-
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            return $path;
-        }
-
-        return Storage::disk('cloudinary')->url($path);
     }
 
     public function update(Request $request, $id)
@@ -442,7 +372,7 @@ class AdminSpacesController extends Controller
             'rating' => $rating,
             'bookings' => $space->bookings()->count(),
             'capacity' => $capacity,
-            'image' => $space->images()->first()?->image_url,
+            'image' => ImageService::url($space->images()->first()?->image_url),
         ];
     }
 
@@ -466,7 +396,7 @@ class AdminSpacesController extends Controller
             'rating' => round($space->reviews()->avg('rating') ?? 0, 1),
             'bookings' => $space->bookings()->count(),
             'capacity' => $capacity,
-            'image' => $space->images()->first()?->image_url,
+            'image' => ImageService::url($space->images()->first()?->image_url),
             'description' => $space->description,
             'created_at' => $space->created_at->toIso8601String(),
         ];

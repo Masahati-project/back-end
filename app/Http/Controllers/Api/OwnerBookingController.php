@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Services\ImageService;
 use App\Traits\OwnerAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -49,7 +50,7 @@ class OwnerBookingController extends Controller
         $space = $unit->workspace;
 
         $hours = $booking->start_datetime->diffInMinutes($booking->end_datetime) / 60;
-        $spaceImage = $space->images->first()?->image_url;
+        $spaceImage = ImageService::url($space->images->first()?->image_url);
 
         return [
             'id' => $booking->id,

@@ -10,6 +10,7 @@ use App\Http\Requests\StoreSpecialRequestRequest;
 use App\Models\Booking;
 use App\Models\Offer;
 use App\Models\SpecialRequest;
+use App\Services\ImageService;
 use App\Services\NotificationService;
 use App\Traits\OwnerAuthorization;
 use Illuminate\Http\Request;
@@ -83,7 +84,7 @@ class SpecialRequestController extends Controller
             'owner_name' => $owner?->full_name,
             'owner_avatar' => $owner?->profile_picture_url,
             'space_name' => $workspace?->title,
-            'space_image' => $workspace?->images?->first()?->image_url,
+            'space_image' => ImageService::url($workspace?->images?->first()?->image_url),
             'price_per_hour' => $price,
             'price' => $price,
             'currency' => $offer->currency,
@@ -318,7 +319,7 @@ class SpecialRequestController extends Controller
                 'id' => $booking->id,
                 'booking_id' => $booking->id,
                 'space_name' => $booking->unit->workspace->title,
-                'image' => $booking->unit->workspace->images->first()?->image_url,
+                'image' => ImageService::url($booking->unit->workspace->images->first()?->image_url),
                 'date' => $start->format('Y-m-d'),
                 'time' => $start->format('H:i') . ' – ' . $end->format('H:i'),
                 'hours' => $durationHours,

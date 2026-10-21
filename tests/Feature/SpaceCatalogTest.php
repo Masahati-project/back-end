@@ -34,6 +34,15 @@ class SpaceCatalogTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // The catalogue returns full delivery URLs, so pin the cloud name
+        // instead of inheriting whatever the local .env happens to hold.
+        config(['filesystems.disks.cloudinary.cloud' => 'test-cloud']);
+    }
+
     private function token(User $user): string
     {
         return $user->createToken('auth_token')->plainTextToken;
@@ -679,8 +688,14 @@ class SpaceCatalogTest extends TestCase
         $this->assertSame('desk', $item['category']);
 
         $this->assertIsArray($item['gallery']);
-        $this->assertSame(['spaces/one.jpg', 'spaces/two.jpg'], $item['gallery']);
-        $this->assertSame('spaces/one.jpg', $item['image']);
+        $this->assertSame([
+            'https://res.cloudinary.com/test-cloud/image/upload/spaces/one.jpg',
+            'https://res.cloudinary.com/test-cloud/image/upload/spaces/two.jpg',
+        ], $item['gallery']);
+        $this->assertSame(
+            'https://res.cloudinary.com/test-cloud/image/upload/spaces/one.jpg',
+            $item['image']
+        );
 
         $this->assertIsArray($item['amenities']);
         $this->assertSame('08:00', $item['open_time']);
@@ -799,7 +814,9 @@ class SpaceCatalogTest extends TestCase
             ->assertJsonPath('space.title', 'مساحة التفاصيل')
             ->assertJsonPath('space.price_per_hour', 90)
             ->assertJsonPath('space.instant_booking', true)
-            ->assertJsonPath('space.gallery', ['spaces/detail.jpg']);
+            ->assertJsonPath('space.gallery', [
+                'https://res.cloudinary.com/test-cloud/image/upload/spaces/detail.jpg',
+            ]);
 
         $this->assertSame($response->json('space'), $response->json('data'));
     }

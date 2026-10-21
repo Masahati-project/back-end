@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Favorite;
+use App\Services\ImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -62,7 +63,7 @@ class CustomerDashboardController extends Controller
                 return [
                     'booking_id' => $booking->id,
                     'title' => $booking->unit->workspace->title,
-                    'image' => $booking->unit->workspace->images->first()?->image_url,
+                    'image' => ImageService::url($booking->unit->workspace->images->first()?->image_url),
                     'date' => $booking->start_datetime->format('Y-m-d'),
                     'time' => $booking->start_datetime->format('H:i'),
                     'hours' => round($hours, 2),
@@ -84,7 +85,7 @@ class CustomerDashboardController extends Controller
                 return [
                     'booking_id' => $booking->id,
                     'space_name' => $booking->unit->workspace->title,
-                    'image' => $booking->unit->workspace->images->first()?->image_url,
+                    'image' => ImageService::url($booking->unit->workspace->images->first()?->image_url),
                     'date' => $booking->start_datetime->format('Y-m-d'),
                     'time_from' => $booking->start_datetime->format('H:i'),
                     'time_to' => $booking->end_datetime->format('H:i'),
@@ -111,7 +112,7 @@ class CustomerDashboardController extends Controller
                 return [
                     'space_id' => $workspace->id,
                     'title' => $workspace->title,
-                    'image' => $workspace->images->first()?->image_url,
+                    'image' => ImageService::url($workspace->images->first()?->image_url),
                     'rating' => round($workspace->reviews_avg_rating ?? 0, 1),
                     'location' => $workspace->location,
                     'price' => $workspace->units->first()?->pricing->first()?->price,
