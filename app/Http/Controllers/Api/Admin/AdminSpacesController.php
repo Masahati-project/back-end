@@ -168,13 +168,14 @@ class AdminSpacesController extends Controller
 
         // The approval flow's whole point is that the admin can open the deed or
         // lease behind the listing. `documents` is what the "فتح المستند" button
-        // reads, so it is emitted at the top level and repeated under `space` —
-        // both shapes are in the contract.
+        // reads, so it is emitted at the top level and repeated under `data` /
+        // `space` — all three shapes are in the contract.
         $detail['documents'] = SpaceDocumentService::listFor($space);
 
         return response()->json([
             'data' => $detail,
             'space' => $detail,
+            'documents' => $detail['documents'],
         ]);
     }
 
@@ -269,7 +270,15 @@ class AdminSpacesController extends Controller
             return;
         }
 
-        $space->verification()->update(['status' => $verificationStatus]);
+        // A space can have several submissions; the admin decision applies to
+        // the current one. `verification()` is a HasOne and would silently pick
+        // an arbitrary (usually the oldest) row once history exists.
+        $latest = $space->spaceDocuments()->orderByDesc('id')->first();
+
+        $latest?->update([
+            'status' => $verificationStatus,
+            'verified_at' => $verificationStatus === 'approved' ? now() : null,
+        ]);
     }
 
     /**

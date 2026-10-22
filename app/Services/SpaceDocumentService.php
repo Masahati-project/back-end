@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * The proof-of-ownership files attached to a listing, shaped for the admin
@@ -110,9 +109,16 @@ class SpaceDocumentService
     }
 
     /**
-     * Cloudinary stores a PDF under `raw/upload`, so the disk's own URL builder
-     * is used here instead of the image-only delivery path. A missing cloud
-     * configuration returns the stored path rather than a broken/500 response.
+     * The public delivery address for a stored document.
+     *
+     * A PDF is uploaded as a Cloudinary `raw` asset, while an image lands under
+     * `image/upload`; building the URL from the extension avoids the disk
+     * adapter's Admin API round-trip (one remote request per document) and keeps
+     * the link correct for both kinds of file.
+     *
+     * The configured disk URL is used when no cloud name is available — a local
+     * or test disk — and the stored path is returned as a last resort rather
+     * than a broken/500 response.
      */
     public static function url(?string $path): ?string
     {
@@ -120,15 +126,68 @@ class SpaceDocumentService
             return null;
         }
 
+        $path = trim($path);
+
         if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
             return $path;
         }
 
-        try {
-            return Storage::disk('cloudinary')->url($path);
-        } catch (\Throwable) {
-            return $path;
+        $path = ltrim(str_replace('\\', '/', $path), '/');
+        $disk = (array) config('filesystems.disks.cloudinary', []);
+        $cloud = self::cloudName($disk);
+
+        if ($cloud !== null) {
+            $prefix = trim((string) ($disk['prefix'] ?? ''), '/');
+            $publicPath = $prefix !== '' && ! str_starts_with($path, $prefix.'/')
+                ? $prefix.'/'.$path
+                : $path;
+
+            $resource = self::isImage($publicPath) ? 'image' : 'raw';
+
+            return 'https://res.cloudinary.com/'.$cloud.'/'.$resource.'/upload/'.$publicPath;
         }
+
+        $base = $disk['url'] ?? null;
+
+        if (is_string($base) && trim($base) !== '') {
+            return rtrim(trim($base), '/').'/'.$path;
+        }
+
+        return $path;
+    }
+
+    /**
+     * @param  array<string, mixed>  $disk
+     */
+    private static function cloudName(array $disk): ?string
+    {
+        $cloud = $disk['cloud'] ?? null;
+
+        if (is_string($cloud) && trim($cloud) !== '') {
+            return trim($cloud);
+        }
+
+        $raw = $disk['url'] ?? config('cloudinary.cloud_url');
+
+        if (is_string($raw) && str_contains($raw, '@')) {
+            $candidate = substr($raw, (int) strrpos($raw, '@') + 1);
+            $candidate = trim(explode('?', $candidate, 2)[0]);
+
+            if ($candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static function isImage(string $path): bool
+    {
+        return in_array(
+            strtolower(pathinfo($path, PATHINFO_EXTENSION)),
+            ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'],
+            true
+        );
     }
 
     public static function fileName(?string $path): ?string

@@ -131,8 +131,13 @@ class OwnerSpaceTest extends TestCase
 
         Storage::disk('cloudinary')->assertExists($space->space_document_url);
 
+        // Like the image fields, the response carries a delivery URL and not
+        // the disk-relative path the column stores. PDFs are Cloudinary `raw`
+        // assets, so they do not live under `image/upload`.
+        config(['filesystems.disks.cloudinary.cloud' => 'test-cloud']);
+
         $this->assertSame(
-            $space->space_document_url,
+            'https://res.cloudinary.com/test-cloud/raw/upload/'.$space->space_document_url,
             $this->withToken($this->token($owner))
                 ->getJson('/api/owner/spaces')
                 ->json('spaces.0.space_document_url')

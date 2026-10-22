@@ -10,6 +10,8 @@ use App\Models\Unit;
 use App\Models\Workspace;
 use App\Models\WorkspaceImage;
 use App\Services\ImageService;
+use App\Services\SpaceDocumentService;
+use App\Services\SpaceDocumentStorage;
 use App\Traits\OwnerAuthorization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -170,11 +172,7 @@ class OwnerSpaceController extends Controller
             'contact_phone' => 'required',
         ]);
 
-        $proofPath = $request->file('docs')->store('documents', 'cloudinary');
-
-        if (! $proofPath) {
-            throw new \RuntimeException('تعذّر حفظ المستند على الخادم.');
-        }
+        $proofPath = SpaceDocumentStorage::store($request->file('docs'), 'documents');
 
         $space = Workspace::create([
             'owner_id' => Auth::id(),
@@ -190,6 +188,15 @@ class OwnerSpaceController extends Controller
             'space_document_url' => $proofPath,
             'is_closed' => false,
             'is_active' => false,
+        ]);
+
+        // The proof sent with the create form is also a document row, so the
+        // owner's document list and the admin review queue see the same file
+        // instead of only the legacy `space_document_url` column.
+        $space->spaceDocuments()->create([
+            'user_id' => Auth::id(),
+            'proof_document_url' => $proofPath,
+            'status' => 'pending',
         ]);
 
         $imagePath = $this->resolveIncomingImageValue($request, $validated['image'] ?? null, 'spaces');
@@ -798,7 +805,7 @@ class OwnerSpaceController extends Controller
             'contact_phone' => $space->contact_phone,
             'image' => $image,
             'gallery' => $gallery,
-            'space_document_url' => $space->space_document_url,
+            'space_document_url' => SpaceDocumentService::url($space->space_document_url),
             'price_per_hour' => $pricePerHour,
             'price' => $pricePerHour,
             'capacity' => $capacity,
