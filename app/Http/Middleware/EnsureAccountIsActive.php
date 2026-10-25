@@ -38,6 +38,7 @@ class EnsureAccountIsActive
         'spaces.public.index',
         'spaces.public.show',
         'notifications.index',
+        'notifications.unread-count',
     ];
 
     public function handle(Request $request, Closure $next): Response

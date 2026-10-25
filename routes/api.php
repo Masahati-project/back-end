@@ -102,6 +102,8 @@ Route::middleware(['auth:sanctum', 'active-account'])->group(function () {
         ->name('special-requests.close');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+    Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
     Route::match(['post', 'patch'], '/notifications/read', [NotificationController::class, 'markAllAsRead'])
         ->name('notifications.mark-all-as-read');
 
@@ -238,10 +240,14 @@ Route::middleware(['auth:sanctum', 'active-account'])->group(function () {
         Route::get('/broadcasts/audience-counts', [AdminBroadcastsController::class, 'audienceCounts']);
         Route::get('/broadcasts/drafts', [AdminBroadcastsController::class, 'drafts']);
         Route::post('/broadcasts', [AdminBroadcastsController::class, 'send']);
-        Route::post('/broadcasts/{id}/resend', [AdminBroadcastsController::class, 'resend']);
+        Route::post('/broadcasts/test', [AdminBroadcastsController::class, 'testSend'])->middleware('throttle:5,1');
+        Route::get('/broadcasts/{id}', [AdminBroadcastsController::class, 'show'])->whereNumber('id');
+        Route::get('/broadcasts/{id}/recipients', [AdminBroadcastsController::class, 'recipients'])->whereNumber('id');
+        Route::post('/broadcasts/{id}/resend', [AdminBroadcastsController::class, 'resend'])->whereNumber('id');
+        Route::post('/broadcasts/{id}/retry-failed', [AdminBroadcastsController::class, 'retryFailed'])->whereNumber('id');
         Route::post('/broadcasts/drafts', [AdminBroadcastsController::class, 'createDraft']);
-        Route::put('/broadcasts/drafts/{id}', [AdminBroadcastsController::class, 'updateDraft']);
-        Route::delete('/broadcasts/drafts/{id}', [AdminBroadcastsController::class, 'deleteDraft']);
+        Route::put('/broadcasts/drafts/{id}', [AdminBroadcastsController::class, 'updateDraft'])->whereNumber('id');
+        Route::delete('/broadcasts/drafts/{id}', [AdminBroadcastsController::class, 'deleteDraft'])->whereNumber('id');
 
         Route::get('/notifications/unread-count', function() {
             return response()->json([

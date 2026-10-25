@@ -2,20 +2,13 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+Only the latest version on the `main` branch and the currently deployed release are supported with security updates.
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+If you discover a security vulnerability in this project, please report it responsibly:
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+- **Email:** masahati@outlook.com
+- **GitHub:** Open a private security advisory at https://github.com/Masahati-project/back-end/security/advisories/new
+
+We aim to acknowledge reports within 48 hours and provide updates as we investigate. If the vulnerability is accepted, we will work on a fix and disclose it appropriately. If declined, we will explain why.
