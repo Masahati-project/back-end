@@ -142,8 +142,9 @@ class BookingTest extends TestCase
             ->postJson('/api/bookings', $this->payload($workspace));
 
         $response->assertStatus(201)
-            ->assertJsonPath('message', 'تم إنشاء الحجز بنجاح.')
+            ->assertJsonPath('message', 'تم إرسال طلب الحجز إلى صاحب المساحة.')
             ->assertJsonPath('booking.status', 'pending')
+            ->assertJsonPath('data.booking.booking_id', $response->json('booking.booking_id'))
             ->assertJsonStructure([
                 'message',
                 'booking' => [
@@ -188,7 +189,7 @@ class BookingTest extends TestCase
 
         $booking = Booking::firstOrFail();
 
-        $this->assertSame('BK-' . $booking->id, $booking->ref);
+        $this->assertSame('BK-'.$booking->id, $booking->ref);
     }
 
     public function test_the_price_is_computed_on_the_server_from_the_hourly_rate(): void
@@ -247,6 +248,133 @@ class BookingTest extends TestCase
             ->assertStatus(201)
             ->assertJsonPath('booking.time_from', '10:00')
             ->assertJsonPath('booking.time_to', '13:00');
+    }
+
+    public function test_hours_alone_derives_the_end_time_and_price(): void
+    {
+        $customer = $this->customer();
+        $workspace = $this->workspaceFor($this->owner());
+        $unit = $this->unitFor($workspace);
+        $this->hourlyPricingFor($unit);
+
+        $response = $this->withToken($this->token($customer))
+            ->postJson('/api/bookings', [
+                'space_id' => $workspace->id,
+                'booking_date' => now()->addDays(3)->format('Y-m-d'),
+                'start_time' => '10:00',
+                'hours' => 3,
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('booking.time_from', '10:00')
+            ->assertJsonPath('booking.time_to', '13:00')
+            ->assertJsonPath('booking.hours', 3)
+            ->assertJsonPath('booking.price', 150);
+
+        $this->assertDatabaseHas('bookings', [
+            'unit_id' => $unit->id,
+            'start_datetime' => now()->addDays(3)->setTime(10, 0)->toDateTimeString(),
+            'end_datetime' => now()->addDays(3)->setTime(13, 0)->toDateTimeString(),
+        ]);
+    }
+
+    public function test_end_time_alone_is_accepted_without_hours(): void
+    {
+        $customer = $this->customer();
+        $workspace = $this->workspaceFor($this->owner());
+        $unit = $this->unitFor($workspace);
+        $this->hourlyPricingFor($unit);
+
+        $this->withToken($this->token($customer))
+            ->postJson('/api/bookings', [
+                'space_id' => $workspace->id,
+                'booking_date' => now()->addDays(3)->format('Y-m-d'),
+                'start_time' => '10:00',
+                'end_time' => '12:30',
+            ])
+            ->assertStatus(201)
+            ->assertJsonPath('booking.hours', 2.5)
+            ->assertJsonPath('booking.price', 125);
+    }
+
+    public function test_more_than_twelve_hours_is_rejected(): void
+    {
+        $customer = $this->customer();
+        $workspace = $this->workspaceFor($this->owner(), [
+            'open_time' => '00:00',
+            'close_time' => '23:59',
+        ]);
+        $unit = $this->unitFor($workspace);
+        $this->hourlyPricingFor($unit);
+
+        $this->withToken($this->token($customer))
+            ->postJson('/api/bookings', [
+                'space_id' => $workspace->id,
+                'booking_date' => now()->addDays(3)->format('Y-m-d'),
+                'start_time' => '08:00',
+                'hours' => 13,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('hours');
+
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    public function test_booking_creation_notifies_the_owner_with_data_and_link(): void
+    {
+        $customer = $this->customer();
+        $spaceOwner = $this->owner();
+        $workspace = $this->workspaceFor($spaceOwner);
+        $unit = $this->unitFor($workspace);
+        $this->hourlyPricingFor($unit);
+
+        $this->withToken($this->token($customer))
+            ->postJson('/api/bookings', $this->payload($workspace))
+            ->assertStatus(201);
+
+        $booking = Booking::firstOrFail();
+        $notification = Notification::where('user_id', $spaceOwner->id)
+            ->where('type', 'booking_request')
+            ->firstOrFail();
+
+        $this->assertSame('/owner/bookings?booking='.$booking->id, $notification->link);
+        $this->assertSame('pending', $notification->data['status']);
+        $this->assertSame($booking->id, $notification->data['booking_id']);
+        $this->assertSame($workspace->id, $notification->data['space_id']);
+        $this->assertSame('مساحة الاختبار', $notification->data['space_name']);
+        $this->assertSame($customer->full_name, $notification->data['customer_name']);
+        $this->assertSame(150, $notification->data['price']);
+        $this->assertStringContainsString('طلب حجز جديد', $notification->message);
+
+        $this->assertFalse(
+            Notification::where('user_id', $customer->id)->where('type', 'booking_request')->exists()
+        );
+    }
+
+    public function test_replaying_a_booking_does_not_duplicate_the_owner_notification(): void
+    {
+        $customer = $this->customer();
+        $spaceOwner = $this->owner();
+        $workspace = $this->workspaceFor($spaceOwner);
+        $unit = $this->unitFor($workspace);
+        $this->hourlyPricingFor($unit);
+
+        $token = $this->token($customer);
+
+        $this->withToken($token)
+            ->withHeader('Idempotency-Key', 'notify-once')
+            ->postJson('/api/bookings', $this->payload($workspace))
+            ->assertStatus(201);
+
+        $this->withToken($token)
+            ->withHeader('Idempotency-Key', 'notify-once')
+            ->postJson('/api/bookings', $this->payload($workspace))
+            ->assertStatus(200);
+
+        $this->assertSame(
+            1,
+            Notification::where('user_id', $spaceOwner->id)->where('type', 'booking_request')->count()
+        );
     }
 
     public function test_the_space_and_the_time_are_echoed_back_for_the_booking_screen(): void
@@ -607,7 +735,7 @@ class BookingTest extends TestCase
             ]));
 
         $response->assertStatus(409)
-            ->assertJsonPath('message', 'الفترة المختارة محجوزة مسبقاً في هذه المساحة، يرجى اختيار وقت آخر.');
+            ->assertJsonPath('message', 'هذا الوقت محجوز بالفعل.');
 
         $this->assertArrayNotHasKey('errors', $response->json());
         $this->assertDatabaseCount('bookings', 1);

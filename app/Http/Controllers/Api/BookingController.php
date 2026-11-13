@@ -19,7 +19,6 @@ use Illuminate\Validation\Rule;
 
 class BookingController extends Controller
 {
-
     public function store(Request $request)
     {
         if ($request->user()->role !== 'customer') {
@@ -41,8 +40,10 @@ class BookingController extends Controller
             ],
             'booking_date' => ['required', 'string', 'date_format:Y-m-d', 'after_or_equal:today'],
             'start_time' => ['required', 'string', 'date_format:H:i,H:i:s'],
-            'end_time' => ['required', 'string', 'date_format:H:i,H:i:s'],
-            'hours' => ['nullable', 'integer', 'min:1'],
+            // The web client sends `hours`; the mobile client sends `end_time`.
+            // Accept either and derive the missing one below.
+            'end_time' => ['nullable', 'string', 'date_format:H:i,H:i:s', 'required_without:hours'],
+            'hours' => ['nullable', 'integer', 'min:1', 'max:12', 'required_without:end_time'],
             'unit_id' => ['nullable', 'integer'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
@@ -61,7 +62,7 @@ class BookingController extends Controller
             ->whereNull('deleted_at')
             ->first();
 
-        if (!$workspace) {
+        if (! $workspace) {
             return $this->fieldError('هذه المساحة غير متاحة للحجز حالياً.', 'space_id');
         }
 
@@ -71,8 +72,23 @@ class BookingController extends Controller
             return $unitError;
         }
 
-        $startMinutes = $this->minutesOfDay($validated['start_time']);
-        $endMinutes = $this->minutesOfDay($validated['end_time']);
+        $startClock = substr($validated['start_time'], 0, 5);
+        $start = Carbon::parse($validated['booking_date'].' '.$startClock);
+
+        if (! empty($validated['end_time'])) {
+            $end = Carbon::parse(
+                $validated['booking_date'].' '.substr($validated['end_time'], 0, 5)
+            );
+        } else {
+            $end = $start->copy()->addHours((int) $validated['hours']);
+
+            if ($end->format('Y-m-d') !== $validated['booking_date']) {
+                return $this->fieldError('مدة الحجز يجب أن تنتهي في اليوم نفسه.', 'hours');
+            }
+        }
+
+        $startMinutes = $this->minutesOfDay($start->format('H:i'));
+        $endMinutes = $this->minutesOfDay($end->format('H:i'));
 
         if ($startMinutes === $endMinutes) {
             return $this->fieldError('وقت النهاية يجب أن يختلف عن وقت البداية.', 'end_time');
@@ -80,6 +96,12 @@ class BookingController extends Controller
 
         if ($endMinutes < $startMinutes) {
             return $this->fieldError('وقت النهاية يجب أن يكون بعد وقت البداية.', 'end_time');
+        }
+
+        $hours = round($start->diffInMinutes($end) / 60, 2);
+
+        if ($hours < 1 || $hours > 12) {
+            return $this->fieldError('عدد ساعات الحجز يجب أن يكون بين ساعة و12 ساعة.', 'hours');
         }
 
         $openMinutes = $this->minutesOfDay($workspace->open_time);
@@ -100,11 +122,6 @@ class BookingController extends Controller
             ], 422);
         }
 
-        $start = Carbon::parse($validated['booking_date'] . ' ' . substr($validated['start_time'], 0, 5));
-        $end = Carbon::parse($validated['booking_date'] . ' ' . substr($validated['end_time'], 0, 5));
-
-        $hours = round($start->diffInMinutes($end) / 60, 2);
-
         $hourly = Pricing::where('unit_id', $unit->id)
             ->where('price_type', 'hourly')
             ->first();
@@ -120,15 +137,15 @@ class BookingController extends Controller
         $price = round($hourlyRate * $hours, 2);
 
         try {
-            $result = DB::transaction(function () use ($userId, $validated, $unit, $start, $end, $hours, $price, $idempotencyKey) {
+            $result = DB::transaction(function () use ($userId, $validated, $unit, $start, $end, $price, $idempotencyKey) {
                 $lockedUnit = Unit::whereKey($unit->id)->lockForUpdate()->first();
 
-                if (!$lockedUnit) {
+                if (! $lockedUnit) {
                     return ['gone' => true];
                 }
 
                 $conflict = Booking::where('unit_id', $lockedUnit->id)
-                    ->where('status', '!=', 'cancelled')
+                    ->whereIn('status', ['pending', 'confirmed'])
                     ->where('start_datetime', '<', $end)
                     ->where('end_datetime', '>', $start)
                     ->exists();
@@ -181,16 +198,26 @@ class BookingController extends Controller
 
         if (isset($result['conflict'])) {
             return response()->json([
-                'message' => 'الفترة المختارة محجوزة مسبقاً في هذه المساحة، يرجى اختيار وقت آخر.',
+                'message' => 'هذا الوقت محجوز بالفعل.',
             ], 409);
         }
 
         $booking = $result['booking'];
-        $booking->loadMissing('unit.workspace.images');
+        $booking->loadMissing('unit.workspace.images', 'user');
+
+        // Trigger #1 fires after the transaction has committed, so a rollback
+        // can never leave an orphan notification behind.
+        NotificationService::createForBookingRequest($booking);
+
+        $payload = $this->formatBookingResponse($booking);
 
         return response()->json([
-            'message' => 'تم إنشاء الحجز بنجاح.',
-            'booking' => $this->formatBookingResponse($booking),
+            'message' => 'تم إرسال طلب الحجز إلى صاحب المساحة.',
+            'data' => [
+                'booking' => $payload,
+            ],
+            // Kept for the screens that still read the top-level key.
+            'booking' => $payload,
         ], 201);
     }
 
@@ -211,7 +238,7 @@ class BookingController extends Controller
     {
         $booking = Booking::find($id);
 
-        if (!$booking) {
+        if (! $booking) {
             return response()->json([
                 'message' => 'الحجز غير موجود.',
             ], 404);
@@ -232,7 +259,7 @@ class BookingController extends Controller
             ], 200);
         }
 
-        if (!in_array($booking->status, ['pending', 'confirmed'], true)) {
+        if (! in_array($booking->status, ['pending', 'confirmed'], true)) {
             return response()->json([
                 'message' => 'لا يمكن إلغاء حجز بهذه الحالة.',
             ], 409);
@@ -247,6 +274,7 @@ class BookingController extends Controller
             'booking' => $this->formatBookingResponse($booking),
         ], 200);
     }
+
     private function resolveUnit(Workspace $workspace, ?int $requestedUnitId): array
     {
         $available = Unit::where('workspace_id', $workspace->id)
@@ -259,19 +287,19 @@ class BookingController extends Controller
                 null,
                 response()->json([
                     'message' => 'لا توجد وحدات متاحة للحجز في هذه المساحة حالياً.',
-                ], 422)
+                ], 422),
             ];
         }
 
         if ($requestedUnitId !== null) {
             $unit = $available->firstWhere('id', $requestedUnitId);
 
-            if (!$unit instanceof Unit) {
+            if (! $unit instanceof Unit) {
                 return [
                     null,
                     response()->json([
                         'message' => 'الوحدة المحددة غير متاحة في هذه المساحة.',
-                    ], 422)
+                    ], 422),
                 ];
             }
 
@@ -319,7 +347,7 @@ class BookingController extends Controller
             ->where('idempotency_key', $key)
             ->first();
 
-        if (!$row) {
+        if (! $row) {
             return null;
         }
 
@@ -337,11 +365,16 @@ class BookingController extends Controller
      */
     private function alreadyProcessedResponse(Booking $booking): JsonResponse
     {
-        $booking->loadMissing('unit.workspace.images');
+        $booking->loadMissing('unit.workspace.images', 'user');
+
+        $payload = $this->formatBookingResponse($booking);
 
         return response()->json([
             'message' => 'تم استلام هذا الطلب مسبقاً، وهذا هو الحجز الأصلي.',
-            'booking' => $this->formatBookingResponse($booking),
+            'data' => [
+                'booking' => $payload,
+            ],
+            'booking' => $payload,
         ], 200);
     }
 
@@ -373,7 +406,7 @@ class BookingController extends Controller
     {
         $clock = substr(trim((string) $time), 0, 5);
 
-        if (!preg_match('/^(\d{1,2}):(\d{2})$/', $clock, $matches)) {
+        if (! preg_match('/^(\d{1,2}):(\d{2})$/', $clock, $matches)) {
             return -1;
         }
 
@@ -463,7 +496,7 @@ class BookingController extends Controller
             'time_to' => $timeTo,
             'end_time' => $timeTo,
             'time' => ($timeFrom !== null && $timeTo !== null)
-                ? $timeFrom . ' - ' . $timeTo
+                ? $timeFrom.' - '.$timeTo
                 : null,
             'hours' => $hours,
             'duration_hours' => $hours,

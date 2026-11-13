@@ -60,6 +60,7 @@ class CustomerDashboardController extends Controller
             ->get()
             ->map(function ($booking) {
                 $hours = $booking->start_datetime->diffInMinutes($booking->end_datetime) / 60;
+
                 return [
                     'booking_id' => $booking->id,
                     'title' => $booking->unit->workspace->title,
@@ -68,7 +69,7 @@ class CustomerDashboardController extends Controller
                     'time' => $booking->start_datetime->format('H:i'),
                     'hours' => round($hours, 2),
                     'price' => $booking->unit->pricing->first()?->price,
-                    'status' => $booking->status
+                    'status' => $booking->status,
                 ];
             });
 
@@ -82,14 +83,21 @@ class CustomerDashboardController extends Controller
             ->orderBy('start_datetime')
             ->get()
             ->map(function ($booking) {
+                $hours = round($booking->start_datetime->diffInMinutes($booking->end_datetime) / 60, 2);
+
                 return [
                     'booking_id' => $booking->id,
+                    'space_id' => $booking->unit->workspace->id,
                     'space_name' => $booking->unit->workspace->title,
                     'image' => ImageService::url($booking->unit->workspace->images->first()?->image_url),
                     'date' => $booking->start_datetime->format('Y-m-d'),
                     'time_from' => $booking->start_datetime->format('H:i'),
                     'time_to' => $booking->end_datetime->format('H:i'),
-                    'status' => $booking->status
+                    'hours' => $hours,
+                    'price' => $booking->total_price !== null
+                        ? round((float) $booking->total_price, 2)
+                        : null,
+                    'status' => $booking->status,
                 ];
             });
 
@@ -109,6 +117,7 @@ class CustomerDashboardController extends Controller
             ->map(function ($favorite) {
                 $workspace = $favorite->workspace;
                 $amenityNames = $workspace->amenities->pluck('name')->toArray();
+
                 return [
                     'space_id' => $workspace->id,
                     'title' => $workspace->title,
@@ -117,7 +126,7 @@ class CustomerDashboardController extends Controller
                     'location' => $workspace->location,
                     'price' => $workspace->units->first()?->pricing->first()?->price,
                     'power' => in_array('power', $amenityNames),
-                    'wifi' => in_array('wifi', $amenityNames)
+                    'wifi' => in_array('wifi', $amenityNames),
                 ];
             });
 
@@ -127,7 +136,7 @@ class CustomerDashboardController extends Controller
     public function toggle(Request $request)
     {
         $request->validate([
-            'space_id' => 'required|exists:workspaces,id'
+            'space_id' => 'required|exists:workspaces,id',
         ]);
 
         $userId = $request->user()->id;

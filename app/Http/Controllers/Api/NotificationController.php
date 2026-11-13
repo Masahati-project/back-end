@@ -47,6 +47,7 @@ class NotificationController extends Controller
                 'link' => $n->link,
                 'url' => $n->link,
                 'action_url' => $n->link,
+                'data' => $n->data,
                 'icon' => $n->type ?? null,
                 'read' => $read,
                 'is_read' => $read,

@@ -14,6 +14,7 @@ class Notification extends Model
         'body',
         'message',
         'link',
+        'data',
         'is_read',
         'read',
         'read_at',
@@ -21,6 +22,7 @@ class Notification extends Model
     ];
 
     protected $casts = [
+        'data' => 'array',
         'is_read' => 'boolean',
         'read' => 'boolean',
         'read_at' => 'datetime',
