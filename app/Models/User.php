@@ -31,6 +31,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'google_id',
+        'provider',
         'proof_document_url',
         'profile_picture_url',
         'status',
@@ -45,9 +47,61 @@ class User extends Authenticatable
     }
     public static function deletePicture($path)
     {
-        if ($path && Storage::disk('cloudinary')->exists($path)) {
+        if ($path && ! preg_match('#^https?://#i', (string) $path) && Storage::disk('cloudinary')->exists($path)) {
             return Storage::disk('cloudinary')->delete($path);
         }
+    }
+
+    /**
+     * The public URL for the user's profile picture, or null when there is none.
+     *
+     * `profile_picture_url` holds two different kinds of value depending on how
+     * the picture arrived:
+     *
+     *  - an uploaded file, stored as a Cloudinary public id (e.g.
+     *    "profile-pictures/abc123.jpg");
+     *  - a Google account image, which is already an absolute
+     *    https://lh3.googleusercontent.com/... URL.
+     *
+     * Only the first kind may go through the Cloudinary disk; running an
+     * absolute URL through `Storage::url()` asks the Cloudinary Admin API to look
+     * up an asset whose public id is a URL, which is why the picture disappeared
+     * from `GET /api/profile` for some accounts. Both login methods share one
+     * column, so the resolver is the single place that knows how to read it.
+     */
+    public static function resolvePictureUrl(?string $value): ?string
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        if (preg_match('#^https?://#i', $value) === 1) {
+            return $value;
+        }
+
+        return Storage::url($value);
+    }
+
+    public function pictureUrl(): ?string
+    {
+        return static::resolvePictureUrl($this->profile_picture_url);
+    }
+
+    /**
+     * The canonical form of an email address used to match accounts across
+     * login methods: trimmed and lower-cased. Google always returns lower-case
+     * addresses, while an email/password registration may not, and the two have
+     * to land on the same row.
+     */
+    public static function normalizeEmail(?string $email): ?string
+    {
+        if ($email === null) {
+            return null;
+        }
+
+        $email = trim($email);
+
+        return $email === '' ? null : mb_strtolower($email);
     }
 
     #[Override]

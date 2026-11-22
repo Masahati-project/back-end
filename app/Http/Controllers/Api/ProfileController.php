@@ -17,15 +17,19 @@ class ProfileController extends Controller
     public function profile(Request $request)
     {
         $user = $request->user();
+
+        // `id` is required by the client to pick the private broadcast channel
+        // (`private-user.{id}` / `private-owner.{id}`), and `picture` has to be
+        // present for both password and Google sessions — the token identifies
+        // the user, not the login method.
         return response()->json([
+            'id' => $user->id,
             'name' => $user->full_name,
             'phone' => $user->phone,
             'email' => $user->email,
             'role' => $user->role,
             'status' => $user->status,
-            'picture' => $user->profile_picture_url
-                ? Storage::url($user->profile_picture_url)
-                : null,
+            'picture' => $user->pictureUrl(),
             'proof_document' => $user->proof_document_url
                 ? Storage::url($user->proof_document_url)
                 : null,

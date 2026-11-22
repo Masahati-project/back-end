@@ -14,6 +14,11 @@ class AuthController extends Controller
 {
     public function registerSpaceOwnerAccount(Request $request)
     {
+        // Normalise the email before validation so the uniqueness check and the
+        // stored value agree, and so a later Google sign-in (which always sends
+        // lower-case) can match this row instead of creating a second account.
+        $request->merge(['email' => User::normalizeEmail($request->input('email'))]);
+
         $request->validate([
             'name' => 'required|string|max:255|unique:users,full_name',
             'phone' => 'required|regex:/^05[0-9]{8}$/|unique:users,phone',
@@ -64,6 +69,8 @@ class AuthController extends Controller
 
     public function registerCustomerAccount(Request $request)
     {
+        $request->merge(['email' => User::normalizeEmail($request->input('email'))]);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'required|regex:/^05[0-9]{8}$/|unique:users,phone',
@@ -112,7 +119,12 @@ class AuthController extends Controller
         ]);
 
         $loginValue = $request->input('login');
-        $loginField = filter_var($loginValue, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
+        $isEmail = filter_var($loginValue, FILTER_VALIDATE_EMAIL) !== false;
+        $loginField = $isEmail ? 'email' : 'phone';
+
+        if ($isEmail) {
+            $loginValue = User::normalizeEmail($loginValue);
+        }
 
         $credentials = [
             $loginField => $loginValue,
@@ -135,6 +147,7 @@ class AuthController extends Controller
                         'email' => $user->email,
                         'phone' => $user->phone,
                         'role' => $user->role,
+                        'picture' => $user->pictureUrl(),
                     ],
                 ], 200);
             }else{

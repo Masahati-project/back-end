@@ -337,14 +337,19 @@ class BookingTest extends TestCase
             ->where('type', 'booking_request')
             ->firstOrFail();
 
-        $this->assertSame('/owner/bookings?booking='.$booking->id, $notification->link);
+        $this->assertSame(
+            '/dashboard/space-owner?tab=bookings&booking='.$booking->id,
+            $notification->link
+        );
         $this->assertSame('pending', $notification->data['status']);
         $this->assertSame($booking->id, $notification->data['booking_id']);
         $this->assertSame($workspace->id, $notification->data['space_id']);
         $this->assertSame('مساحة الاختبار', $notification->data['space_name']);
         $this->assertSame($customer->full_name, $notification->data['customer_name']);
         $this->assertSame(150, $notification->data['price']);
-        $this->assertStringContainsString('طلب حجز جديد', $notification->message);
+        $this->assertSame('طلب حجز جديد', $notification->title);
+        $this->assertStringContainsString('طلب حجز على «مساحة الاختبار»', $notification->message);
+        $this->assertStringContainsString($customer->full_name, $notification->message);
 
         $this->assertFalse(
             Notification::where('user_id', $customer->id)->where('type', 'booking_request')->exists()
@@ -776,7 +781,7 @@ class BookingTest extends TestCase
         $this->assertDatabaseCount('bookings', 2);
     }
 
-    public function test_two_units_of_the_same_space_can_hold_the_same_window(): void
+    public function test_a_second_unit_of_the_same_space_cannot_hold_the_same_window(): void
     {
         $firstCustomer = $this->customer();
         $secondCustomer = $this->customer();
@@ -790,6 +795,31 @@ class BookingTest extends TestCase
 
         $this->withToken($this->token($secondCustomer))
             ->postJson('/api/bookings', $this->payload($workspace, ['unit_id' => $secondUnit->id]))
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'هذا الوقت محجوز بالفعل.');
+
+        $this->assertDatabaseCount('bookings', 1);
+    }
+
+    public function test_two_different_spaces_can_hold_the_same_window(): void
+    {
+        $firstCustomer = $this->customer();
+        $secondCustomer = $this->customer();
+        $owner = $this->owner();
+
+        $firstWorkspace = $this->workspaceFor($owner);
+        $secondWorkspace = $this->workspaceFor($owner, ['title' => 'مساحة ثانية']);
+
+        $firstUnit = $this->unitFor($firstWorkspace);
+        $secondUnit = $this->unitFor($secondWorkspace);
+
+        $this->hourlyPricingFor($firstUnit);
+        $this->hourlyPricingFor($secondUnit);
+
+        $this->existingBooking($firstCustomer, $firstUnit);
+
+        $this->withToken($this->token($secondCustomer))
+            ->postJson('/api/bookings', $this->payload($secondWorkspace, ['unit_id' => $secondUnit->id]))
             ->assertStatus(201);
 
         $this->assertDatabaseCount('bookings', 2);

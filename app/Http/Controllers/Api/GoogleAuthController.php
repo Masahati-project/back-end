@@ -5,12 +5,24 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Google\Client;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class GoogleAuthController extends Controller
 {
+    /**
+     * Verify a Google ID token and return its claims, or false when invalid.
+     *
+     * Extracted so the account-linking rules below can be tested without a live
+     * Google round-trip.
+     */
+    protected function verifyIdToken(string $idToken)
+    {
+        $client = new \Google_Client(['client_id' => config('services.google.client_id')]);
+
+        return $client->verifyIdToken($idToken);
+    }
+
     public function loginWithGoogle(Request $request)
     {
         $request->validate([
@@ -19,8 +31,7 @@ class GoogleAuthController extends Controller
         ]);
 
         try {
-            $client = new \Google_Client(['client_id' => config('services.google.client_id')]);
-            $payload = $client->verifyIdToken($request->id_token);
+            $payload = $this->verifyIdToken($request->id_token);
         } catch (\Throwable $e) {
             $payload = false;
         }
@@ -32,20 +43,55 @@ class GoogleAuthController extends Controller
         }
 
         $googleId = $payload['sub'];
-        $email = $payload['email'];
+        $email = User::normalizeEmail($payload['email'] ?? null);
         $name = $payload['name'] ?? $email;
         $avatarUrl = $payload['picture'] ?? null;
 
-        $user = User::where('google_id', $googleId)->orWhere('email', $email)->first();
+        // Google only vouches for the address when it says so. Linking an
+        // existing password account to a Google identity on an unverified
+        // address would let anyone who can put that address on a Google account
+        // take over the row.
+        $emailVerified = ($payload['email_verified'] ?? false) === true;
+
+        if ($email === null) {
+            return response()->json([
+                'message' => 'Google token لا يحتوي على بريد إلكتروني صالح',
+            ], 401);
+        }
+
+        if (! $emailVerified) {
+            return response()->json([
+                'message' => 'البريد الإلكتروني لحساب Google غير موثّق',
+            ], 403);
+        }
+
+        // Match on google_id first, then on the normalised email so an account
+        // created with email/password is reused instead of duplicated. Email is
+        // compared case-insensitively because older rows may not have been
+        // normalised when they were written.
+        $user = User::where('google_id', $googleId)
+            ->orWhereRaw('LOWER(email) = ?', [$email])
+            ->first();
 
         if ($user) {
-            if (!$user->google_id) {
-                $user->update([
-                    'google_id' => $googleId,
-                    'provider' => 'google',
-                    'profile_picture_url' => $user->profile_picture_url ?? $avatarUrl,
-                ]);
+            $updates = [];
+
+            if (! $user->google_id) {
+                $updates['google_id'] = $googleId;
+                $updates['provider'] = 'google';
             }
+
+            // Persist Google's picture into the same column the upload
+            // endpoints write, but never clobber a picture the user already has
+            // (an upload, or a picture from a prior Google sign-in).
+            if (blank($user->profile_picture_url) && filled($avatarUrl)) {
+                $updates['profile_picture_url'] = $avatarUrl;
+            }
+
+            if ($updates !== []) {
+                $user->update($updates);
+            }
+
             if ($user->status == 'active') {
                 $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -55,7 +101,9 @@ class GoogleAuthController extends Controller
                         'id' => $user->id,
                         'name' => $user->full_name,
                         'email' => $user->email,
+                        'phone' => $user->phone,
                         'role' => $user->role,
+                        'picture' => $user->pictureUrl(),
                     ],
                     'token' => $token,
                 ]);
@@ -100,7 +148,9 @@ class GoogleAuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->full_name,
                 'email' => $user->email,
+                'phone' => $user->phone,
                 'role' => $user->role,
+                'picture' => $user->pictureUrl(),
             ],
             'token' => $token,
         ], 200);

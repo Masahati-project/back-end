@@ -73,6 +73,65 @@ class AuthProfileTest extends TestCase
         $this->deleteJson('/api/delete-user')->assertStatus(401);
     }
 
+    public function test_profile_returns_the_id_and_a_google_picture_url_untouched(): void
+    {
+        $googlePicture = 'https://lh3.googleusercontent.com/a/abc123';
+
+        $user = $this->createUser(['profile_picture_url' => $googlePicture]);
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/profile')
+            ->assertStatus(200)
+            ->assertJsonPath('id', $user->id)
+            ->assertJsonPath('email', $user->email)
+            ->assertJsonPath('picture', $googlePicture);
+    }
+
+    public function test_profile_returns_a_null_picture_when_there_is_none(): void
+    {
+        $user = $this->createUser(['profile_picture_url' => null]);
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/profile')
+            ->assertStatus(200)
+            ->assertJsonPath('picture', null);
+    }
+
+    public function test_password_login_returns_the_picture_so_the_avatar_survives(): void
+    {
+        $googlePicture = 'https://lh3.googleusercontent.com/a/xyz789';
+
+        $user = $this->createUser([
+            'email' => 'karam@example.com',
+            'profile_picture_url' => $googlePicture,
+        ]);
+
+        $this->postJson('/api/login', [
+            'login' => 'karam@example.com',
+            'password' => 'password',
+        ])
+            ->assertStatus(200)
+            ->assertJsonPath('user.id', $user->id)
+            ->assertJsonPath('user.picture', $googlePicture);
+    }
+
+    public function test_login_is_case_insensitive_on_the_email(): void
+    {
+        $user = $this->createUser([
+            'email' => 'karam@example.com',
+            'profile_picture_url' => null,
+        ]);
+
+        $this->postJson('/api/login', [
+            'login' => 'Karam@Example.com',
+            'password' => 'password',
+        ])
+            ->assertStatus(200)
+            ->assertJsonPath('user.id', $user->id);
+    }
+
     public function test_upload_picture_stores_image_and_returns_url(): void
     {
         Storage::fake('cloudinary');

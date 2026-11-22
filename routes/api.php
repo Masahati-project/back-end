@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
+use App\Http\Controllers\Api\BroadcastingAuthController;
 use App\Http\Controllers\Api\CustomerDashboardController;
 use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\OtpController;
@@ -111,6 +112,11 @@ Route::middleware(['auth:sanctum', 'active-account'])->group(function () {
     Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancel'])
         ->whereNumber('id')
         ->name('bookings.cancel');
+
+    // Pusher/Soketi channel authorization. Lives under /api so it reuses the
+    // same Sanctum token the rest of the API does.
+    Route::post('/broadcasting/auth', [BroadcastingAuthController::class, 'authenticate'])
+        ->name('broadcasting.auth');
 
     Route::get('/ads/open', [PublicAdController::class, 'open'])->name('ads.open');
 

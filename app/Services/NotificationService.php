@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Events\BookingRequested;
+use App\Events\BookingStatusChanged;
 use App\Models\Booking;
 use App\Models\Notification;
+use Illuminate\Support\Facades\Log;
 
 class NotificationService
 {
@@ -86,24 +89,23 @@ class NotificationService
         $data = self::bookingPayload($booking);
 
         $text = sprintf(
-            'طلب حجز جديد على «%s» من %s — %s · %s–%s · %s ساعات · %s ر.س',
+            'طلب حجز على «%s» من %s',
             $data['space_name'],
-            $data['customer_name'],
-            $data['date'],
-            $data['time_from'],
-            $data['time_to'],
-            self::formatNumber($data['hours']),
-            self::formatNumber($data['price'])
+            $data['customer_name']
         );
 
-        return self::create(
+        $notification = self::create(
             (int) $ownerId,
             'booking_request',
             $text,
             'طلب حجز جديد',
-            '/owner/bookings?booking='.$booking->id,
+            '/dashboard/space-owner?tab=bookings&booking='.$booking->id,
             $data
         );
+
+        self::broadcastSafely(new BookingRequested($notification));
+
+        return $notification;
     }
 
     /**
@@ -118,7 +120,7 @@ class NotificationService
     {
         $booking->loadMissing(['unit.workspace', 'user']);
 
-        if (! in_array($booking->status, ['confirmed', 'cancelled'], true)) {
+        if (! in_array($booking->status, ['confirmed', 'rejected'], true)) {
             return null;
         }
 
@@ -126,32 +128,28 @@ class NotificationService
 
         if ($booking->status === 'confirmed') {
             $type = 'booking_confirmed';
-            $title = 'تم تأكيد الحجز';
-            $text = sprintf(
-                'تم تأكيد حجزك في «%s» يوم %s من %s إلى %s.',
-                $data['space_name'],
-                $data['date'],
-                $data['time_from'],
-                $data['time_to']
-            );
+            $title = 'تم قبول حجزك';
+            $text = sprintf('تم تأكيد حجزك على «%s»', $data['space_name']);
         } else {
             $type = 'booking_rejected';
-            $title = 'تم رفض الحجز';
-            $text = sprintf(
-                'تم رفض طلب حجزك في «%s» يوم %s.',
-                $data['space_name'],
-                $data['date']
-            );
+            $title = 'تم رفض حجزك';
+            $text = sprintf('تم رفض حجزك على «%s»', $data['space_name']);
         }
 
-        return self::create(
+        // The customer is sent to the space page, where the booking lives, so a
+        // stale toast cannot act on a slot that has moved on.
+        $notification = self::create(
             (int) $booking->user_id,
             $type,
             $text,
             $title,
-            '/dashboard/customer?booking='.$booking->id,
+            '/ads/'.$data['space_id'],
             $data
         );
+
+        self::broadcastSafely(new BookingStatusChanged($notification));
+
+        return $notification;
     }
 
     /**
@@ -185,14 +183,24 @@ class NotificationService
         ];
     }
 
-    private static function formatNumber($value): string
+    /**
+     * Fire a broadcast event without letting a socket problem fail the request.
+     *
+     * The notification row is the source of truth and has already been written
+     * by the time this runs. A broadcaster that is down — or a queue that cannot
+     * accept the job — must not turn a successful booking into a 500, so the
+     * failure is logged and swallowed. The client still gets the row on its next
+     * `GET /api/notifications` poll.
+     */
+    private static function broadcastSafely(object $event): void
     {
-        if ($value === null) {
-            return '0';
+        try {
+            event($event);
+        } catch (\Throwable $e) {
+            Log::warning('Booking broadcast failed; notification row was still created.', [
+                'event' => $event::class,
+                'error' => $e->getMessage(),
+            ]);
         }
-
-        $formatted = rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.');
-
-        return $formatted === '' ? '0' : $formatted;
     }
 }

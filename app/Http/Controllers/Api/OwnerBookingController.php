@@ -21,14 +21,29 @@ class OwnerBookingController extends Controller
      * it cannot see. `data` is the agreed shape; `bookings` is kept for the
      * screens that still read the older key.
      */
-    public function index()
+    public function index(Request $request)
     {
         $this->ensureOwnerRole();
 
-        $bookings = Booking::with(['unit.workspace.images', 'user'])
+        $query = Booking::with(['unit.workspace.images', 'user'])
             ->whereHas('unit.workspace', function ($q) {
                 $q->where('owner_id', Auth::id());
-            })
+            });
+
+        // The notification link deep-links to a single booking (`?booking=42`)
+        // and the bookings tab can be filtered by status; both are server-side
+        // filters so a large inbox never has to be paginated on the client.
+        if ($request->filled('status') && $request->input('status') !== 'all') {
+            $query->where('status', $request->input('status'));
+        }
+
+        $bookingId = $request->input('booking_id', $request->input('booking'));
+
+        if ($bookingId !== null && $bookingId !== '') {
+            $query->whereKey((int) $bookingId);
+        }
+
+        $bookings = $query
             ->orderByDesc('created_at')
             ->get()
             ->map(function ($booking) {
@@ -46,7 +61,9 @@ class OwnerBookingController extends Controller
      * PATCH /api/owner/bookings/{booking}/status
      *
      * Only the owning owner may decide. The transition is idempotent and only
-     * `pending` may leave its state, so `confirmed`/`cancelled` are terminal.
+     * `pending` may leave its state, so `confirmed`/`rejected` are terminal.
+     * `cancelled` is accepted as a legacy spelling of `rejected` and stored as
+     * `rejected`, which is the value every client now reads.
      */
     public function updateStatus(Request $request, string $id)
     {
@@ -54,13 +71,14 @@ class OwnerBookingController extends Controller
         $booking = $this->ensureOwnsBooking($id);
 
         $validated = $request->validate([
-            'status' => 'required|in:confirmed,cancelled',
+            'status' => 'required|in:confirmed,rejected,cancelled',
         ]);
 
-        $target = $validated['status'];
+        $target = $validated['status'] === 'cancelled' ? 'rejected' : $validated['status'];
 
         // Idempotent: repeated Accept/Reject returns the same state and does
-        // not send a second notification.
+        // not send a second notification. A legacy `cancelled` against an
+        // already-rejected row lands here too.
         if ($booking->status === $target) {
             return $this->statusResponse($booking, $target);
         }
@@ -68,7 +86,7 @@ class OwnerBookingController extends Controller
         if ($booking->status !== 'pending') {
             return response()->json([
                 'message' => 'لا يمكن تغيير حالة هذا الحجز.',
-            ], 422);
+            ], 409);
         }
 
         $booking->update(['status' => $target]);
@@ -86,7 +104,7 @@ class OwnerBookingController extends Controller
         $payload = $this->formatBookingResponse($booking);
 
         return response()->json([
-            'message' => $status === 'confirmed' ? 'تم تأكيد الحجز.' : 'تم إلغاء الحجز.',
+            'message' => $status === 'confirmed' ? 'تم تأكيد الحجز.' : 'تم رفض الحجز.',
             'data' => [
                 'booking' => $payload,
             ],

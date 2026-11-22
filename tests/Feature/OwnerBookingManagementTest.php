@@ -125,7 +125,7 @@ class OwnerBookingManagementTest extends TestCase
             ->where('type', 'booking_confirmed')
             ->firstOrFail();
 
-        $this->assertSame('/dashboard/customer?booking='.$booking->id, $notification->link);
+        $this->assertSame('/ads/'.$booking->unit->workspace->id, $notification->link);
         $this->assertSame('confirmed', $notification->data['status']);
         $this->assertSame($booking->id, $notification->data['booking_id']);
 
@@ -141,7 +141,26 @@ class OwnerBookingManagementTest extends TestCase
         );
     }
 
-    public function test_owner_rejection_marks_the_booking_cancelled_and_notifies_the_customer(): void
+    public function test_owner_rejection_marks_the_booking_rejected_and_notifies_the_customer(): void
+    {
+        $owner = $this->owner();
+        $customer = $this->customer();
+        $booking = $this->bookingFor($customer, $this->unitFor($this->workspaceFor($owner)));
+
+        $this->withToken($this->token($owner))
+            ->patchJson("/api/owner/bookings/{$booking->id}/status", ['status' => 'rejected'])
+            ->assertStatus(200)
+            ->assertJsonPath('data.booking.status', 'rejected');
+
+        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'status' => 'rejected']);
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $customer->id,
+            'type' => 'booking_rejected',
+        ]);
+    }
+
+    public function test_a_legacy_cancelled_rejection_is_stored_as_rejected(): void
     {
         $owner = $this->owner();
         $customer = $this->customer();
@@ -150,14 +169,9 @@ class OwnerBookingManagementTest extends TestCase
         $this->withToken($this->token($owner))
             ->patchJson("/api/owner/bookings/{$booking->id}/status", ['status' => 'cancelled'])
             ->assertStatus(200)
-            ->assertJsonPath('data.booking.status', 'cancelled');
+            ->assertJsonPath('data.booking.status', 'rejected');
 
-        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'status' => 'cancelled']);
-
-        $this->assertDatabaseHas('notifications', [
-            'user_id' => $customer->id,
-            'type' => 'booking_rejected',
-        ]);
+        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'status' => 'rejected']);
     }
 
     public function test_another_owner_cannot_change_the_booking_status(): void
@@ -188,7 +202,7 @@ class OwnerBookingManagementTest extends TestCase
         $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'status' => 'pending']);
     }
 
-    public function test_status_must_be_confirmed_or_cancelled(): void
+    public function test_status_must_be_confirmed_or_rejected(): void
     {
         $owner = $this->owner();
         $booking = $this->bookingFor($this->customer(), $this->unitFor($this->workspaceFor($owner)));
@@ -199,7 +213,7 @@ class OwnerBookingManagementTest extends TestCase
             ->assertJsonValidationErrors('status');
     }
 
-    public function test_a_confirmed_booking_cannot_be_cancelled(): void
+    public function test_a_confirmed_booking_cannot_be_rejected(): void
     {
         $owner = $this->owner();
         $booking = $this->bookingFor(
@@ -209,8 +223,8 @@ class OwnerBookingManagementTest extends TestCase
         );
 
         $this->withToken($this->token($owner))
-            ->patchJson("/api/owner/bookings/{$booking->id}/status", ['status' => 'cancelled'])
-            ->assertStatus(422);
+            ->patchJson("/api/owner/bookings/{$booking->id}/status", ['status' => 'rejected'])
+            ->assertStatus(409);
 
         $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'status' => 'confirmed']);
     }
@@ -263,7 +277,7 @@ class OwnerBookingManagementTest extends TestCase
                 ],
             ])
             ->assertJsonPath('data.notifications.0.type', 'booking_request')
-            ->assertJsonPath('data.notifications.0.link', '/owner/bookings?booking='.$bookingId)
+            ->assertJsonPath('data.notifications.0.link', '/dashboard/space-owner?tab=bookings&booking='.$bookingId)
             ->assertJsonPath('data.notifications.0.data.booking_id', $bookingId)
             ->assertJsonPath('data.notifications.0.data.status', 'pending')
             ->assertJsonPath('data.notifications.0.data.customer_name', $customer->full_name)

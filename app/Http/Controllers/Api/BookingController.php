@@ -138,13 +138,25 @@ class BookingController extends Controller
 
         try {
             $result = DB::transaction(function () use ($userId, $validated, $unit, $start, $end, $price, $idempotencyKey) {
-                $lockedUnit = Unit::whereKey($unit->id)->lockForUpdate()->first();
+                // Lock the space, not the unit: the overlap rule is per space,
+                // so two concurrent requests for different units of the same
+                // space must serialise on the same row. Locking a unit would let
+                // them both pass the conflict check and create duplicates.
+                $lockedWorkspace = Workspace::whereKey($unit->workspace_id)
+                    ->lockForUpdate()
+                    ->first();
 
-                if (! $lockedUnit) {
+                $lockedUnit = Unit::whereKey($unit->id)->first();
+
+                if (! $lockedWorkspace || ! $lockedUnit) {
                     return ['gone' => true];
                 }
 
-                $conflict = Booking::where('unit_id', $lockedUnit->id)
+                // One booking per space per time range, regardless of which unit
+                // inside the space is picked.
+                $conflict = Booking::whereHas('unit', function ($q) use ($lockedWorkspace) {
+                    $q->where('workspace_id', $lockedWorkspace->id);
+                })
                     ->whereIn('status', ['pending', 'confirmed'])
                     ->where('start_datetime', '<', $end)
                     ->where('end_datetime', '>', $start)
@@ -488,6 +500,9 @@ class BookingController extends Controller
             'space_location' => $space?->location,
             'image' => ImageService::url($space?->images?->first()?->image_url),
             'unit_id' => $booking->unit_id,
+            'user_id' => $booking->user_id,
+            'customer_name' => $booking->user?->full_name,
+            'customer' => $booking->user?->full_name,
             'date' => $start?->format('Y-m-d'),
             'start_datetime' => $start?->toIso8601String(),
             'end_datetime' => $end?->toIso8601String(),
